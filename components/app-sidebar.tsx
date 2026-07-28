@@ -10,6 +10,8 @@ import {
   Map,
   Server,
   History,
+  Wrench,
+  BarChart3,
 } from "lucide-react"
 
 import {
@@ -24,13 +26,20 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const NAV_ITEMS = [
+const OPERATIONS_ITEMS = [
   { title: "Overview", href: "/", icon: LayoutDashboard },
+  { title: "Applications Overview", href: "/applications/overview", icon: BarChart3 }
+]
+
+const MAINTENANCE_ITEMS = [
   { title: "Applications", href: "/applications", icon: AppWindow },
   { title: "Application Groups", href: "/application-groups", icon: Boxes },
   { title: "Servers", href: "/servers", icon: Server },
   { title: "Deployments", href: "/deployments", icon: History },
-  { title: "Roadmap", href: "/roadmap", icon: Map },
+]
+
+const OTHERS_ITEMS = [
+  { title: "Roadmap", href: "/roadmap", icon: Map }
 ]
 
 function isActive(pathname: string, href: string) {
@@ -60,10 +69,50 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+          <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {OPERATIONS_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={isActive(pathname, item.href)}
+                    tooltip={item.title}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Maintenance</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {MAINTENANCE_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={isActive(pathname, item.href)}
+                    tooltip={item.title}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+         <SidebarGroup>
+          <SidebarGroupLabel>Others</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {OTHERS_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={isActive(pathname, item.href)}

@@ -287,7 +287,7 @@ function ServersPanel({
 
 export function ApplicationDetailTabs({ detail }: { detail: ApplicationDetail }) {
   return (
-    <Tabs defaultValue="overview" className="gap-4">
+    <Tabs defaultValue="servers" className="gap-4">
       <TabsList
         variant="line"
         className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0"

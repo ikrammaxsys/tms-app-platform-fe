@@ -170,7 +170,14 @@ export interface OverviewData {
 }
 
 export async function getOverview(): Promise<OverviewData> {
-  const [apps, servers] = await Promise.all([getApplications(), getServers()])
+  const [items, servers] = await Promise.all([
+    tmsApi.listApplications(),
+    getServers(),
+  ])
+  const byId = new Map(servers.map((s) => [s.id, s]))
+  const apps = (items ?? [])
+    .map((a) => toApplicationView(a, byId.get(a.serverId)))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const warningServerIds = new Set(
     apps.filter((a) => a.status === "Warning" || a.status === "Down").map((a) => a.serverId),
