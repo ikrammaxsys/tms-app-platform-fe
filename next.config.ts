@@ -1,6 +1,6 @@
 import type { NextConfig } from "next"
 
-const apiBase = (process.env.TMS_API_BASE_URL || "http://127.0.0.1:5128").replace(
+const apiBase = (process.env.NEXT_PUBLIC_TMS_API_BASE_URL || "http://13.229.238.4:5128").replace(
   /\/$/,
   "",
 )

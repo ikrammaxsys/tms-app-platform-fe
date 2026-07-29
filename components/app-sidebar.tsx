@@ -12,6 +12,7 @@ import {
   History,
   Wrench,
   BarChart3,
+  Network,
 } from "lucide-react"
 
 import {
@@ -28,7 +29,8 @@ import {
 
 const OPERATIONS_ITEMS = [
   { title: "Overview", href: "/", icon: LayoutDashboard },
-  { title: "Applications Overview", href: "/applications/overview", icon: BarChart3 }
+  { title: "Applications Overview", href: "/applications/overview", icon: BarChart3 },
+  { title: "Servers Overview", href: "/servers/overview", icon: Network },
 ]
 
 const MAINTENANCE_ITEMS = [

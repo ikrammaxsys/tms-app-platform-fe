@@ -6,16 +6,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import type { PlatformActionFn } from "@/lib/platform/action-state"
+import { usePlatformAction } from "@/hooks/use-platform-action"
 
 export function GroupForm({
   action,
   group,
 }: {
-  action: (formData: FormData) => void | Promise<void>
+  action: PlatformActionFn
   group?: { id: number; name: string }
 }) {
+  const { formAction, pending } = usePlatformAction(action)
+
   return (
-    <form action={action} className="max-w-xl">
+    <form action={formAction} className="max-w-xl">
       {group ? <input type="hidden" name="id" value={group.id} /> : null}
       <Card>
         <CardHeader>
@@ -39,7 +43,9 @@ export function GroupForm({
           variant="outline"
           render={<Link href="/application-groups">Cancel</Link>}
         />
-        <Button type="submit">{group ? "Save changes" : "Create group"}</Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : group ? "Save changes" : "Create group"}
+        </Button>
       </div>
     </form>
   )

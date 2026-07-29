@@ -7,26 +7,18 @@ import { AppAvatar, StatusLabel } from "@/components/platform/status"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateTime } from "@/lib/platform/format"
-import { availabilityDays } from "@/lib/platform/view"
-import type { ApplicationView } from "@/lib/platform/types"
-import { cn } from "@/lib/utils"
-
-const TIMELINE_STYLES = {
-  Healthy: "bg-emerald-500",
-  Partial: "bg-amber-500",
-  Down: "bg-red-500",
-} as const
-
-function TimelineBox({ day }: { day: { status: "Healthy" | "Partial" | "Down" } }) {
-  return <div className={cn("h-6 flex-1", TIMELINE_STYLES[day.status])} />
-}
+import { availabilityDays, availabilityDayFromUptimePoint } from "@/lib/platform/view"
+import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
+import { AvailabilityDayBarStrip } from "@/components/platform/availability-day-bar"
 
 export function ApplicationCards({
   applications,
   loading = false,
+  uptimeTimelines,
 }: {
   applications: ApplicationView[]
   loading?: boolean
+  uptimeTimelines?: Record<number, UptimeTimeline | undefined>
 }) {
   if (loading) {
     return (
@@ -64,10 +56,31 @@ export function ApplicationCards({
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {applications.map((app) => {
-        const week = availabilityDays(app).slice(-30)
-        const uptime = Math.round(
-          (week.filter((day) => day.status === "Healthy").length / week.length) * 100,
-        )
+        const overallTimeline = uptimeTimelines?.[app.id]
+        const week = overallTimeline
+          ? overallTimeline.points.map(availabilityDayFromUptimePoint)
+          : availabilityDays(app).slice(-30)
+
+        const uptime = overallTimeline
+          ? overallTimeline.totalChecks > 0
+            ? Math.round(overallTimeline.uptimePercent)
+            : "No data"
+          : Math.round(
+              (week.filter((day) => day.status === "Healthy").length / week.length) * 100,
+            )
+
+        const displayStatus: "Operational" | "Degraded" | "Unknown" =
+          overallTimeline
+            ? overallTimeline.totalChecks === 0
+              ? "Unknown"
+              : overallTimeline.isOnline
+              ? "Operational"
+              : "Degraded"
+            : app.isOnline === true
+            ? "Operational"
+            : app.isOnline === false
+            ? "Degraded"
+            : "Unknown"
 
         return (
           <Card key={app.id} className="group transition-colors hover:border-primary/40">
@@ -88,7 +101,7 @@ export function ApplicationCards({
                 </div>
                  <div>
                   <p className="text-muted-foreground text-xs">Live status</p>
-                  <StatusLabel status={app.status} />
+                  <StatusLabel status={displayStatus} />
                 </div>
               </div>
             </CardHeader>
@@ -96,13 +109,11 @@ export function ApplicationCards({
               <div className="space-y-2 rounded-lg border bg-muted/25 p-2.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">30-day uptime</span>
-                  <span className="font-semibold text-foreground">{uptime}%</span>
+                  <span className="font-semibold text-foreground">
+                    {typeof uptime === "number" ? `${uptime}%` : uptime}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  {week.map((day, index) => (
-                    <TimelineBox key={`${app.id}-${day.label}-${index}`} day={day} />
-                  ))}
-                </div>
+                <AvailabilityDayBarStrip days={week} />
               </div>
 
               <div className="flex items-center justify-between gap-3 border-t pt-2 text-sm">

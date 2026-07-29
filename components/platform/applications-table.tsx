@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Search } from "lucide-react"
+import { Copy, Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import {
@@ -110,6 +110,7 @@ export function ApplicationsTable({
           <TableHeader>
             <TableRow>
               <TableHead>Application</TableHead>
+              <TableHead>UID</TableHead>
               <TableHead>Server</TableHead>
               <TableHead>Version</TableHead>
               <TableHead>Status</TableHead>
@@ -122,7 +123,7 @@ export function ApplicationsTable({
             {rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={withActions ? 7 : 6}
+                  colSpan={withActions ? 8 : 7}
                   className="text-muted-foreground h-24 text-center"
                 >
                   No applications found.
@@ -145,6 +146,26 @@ export function ApplicationsTable({
                           {app.applicationGroupName || "Application"}
                         </p>
                       </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {app.uid || "-"}
+                      </span>
+                      {app.uid ? (
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          type="button"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(app.uid ?? "")
+                          }}
+                          className="rounded-md p-1"
+                        >
+                          <Copy className="size-4" />
+                        </Button>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell>

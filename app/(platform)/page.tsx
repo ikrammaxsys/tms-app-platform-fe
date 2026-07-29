@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { tmsApi } from "@/lib/platform/api-service"
 import { formatDateTime } from "@/lib/platform/format"
 import { toApplicationView } from "@/lib/platform/view"
-import type { ApplicationView, Server as ServerType } from "@/lib/platform/types"
+import type { ApplicationView, AppStatus, Server as ServerType } from "@/lib/platform/types"
 import { cn } from "@/lib/utils"
 
 function StatCard({
@@ -30,7 +30,7 @@ function StatCard({
   tone: "blue" | "green" | "purple" | "red"
 }) {
   const tones = {
-    blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    blue: "bg-primary/10 text-primary",
     green: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     purple: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
     red: "bg-red-500/10 text-red-600 dark:text-red-400",
@@ -104,18 +104,24 @@ export default function OverviewPage() {
   }
 
   const warningServerIds = new Set(
-    apps.filter((a) => a.status === "Warning" || a.status === "Down").map((a) => a.serverId),
+    apps.filter((a) => a.status === "Degraded" || a.status === "Down").map((a) => a.serverId),
   )
   const avgUptime =
     apps.length === 0
       ? "100.00%"
       : `${(apps.reduce((sum, a) => sum + a.uptimePercent, 0) / apps.length).toFixed(2)}%`
 
-  const serverHealth = servers.map((s) => ({
+  const serverHealth: {
+    id: number
+    name: string
+    environment: string
+    status: Extract<AppStatus, "Operational" | "Degraded">
+    healthPercent: number
+  }[] = servers.map((s) => ({
     id: s.id,
     name: s.domain,
     environment: s.environment,
-    status: (warningServerIds.has(s.id) ? "Warning" : "Healthy") as "Healthy" | "Warning",
+    status: warningServerIds.has(s.id) ? ("Degraded" as const) : ("Operational" as const),
     healthPercent: warningServerIds.has(s.id) ? 78 : 99,
   }))
 
@@ -150,8 +156,8 @@ export default function OverviewPage() {
               tone="blue"
               meta={
                 <span className="inline-flex items-center gap-1.5">
-                  <StatusDot status="Healthy" />
-                  {apps.filter((a) => a.status === "Healthy").length} Healthy
+                  <StatusDot status="Operational" />
+                  {apps.filter((a) => a.status === "Operational").length} Operational
                 </span>
               }
             />
@@ -162,7 +168,7 @@ export default function OverviewPage() {
               tone="green"
               meta={
                 <span className="inline-flex items-center gap-1.5">
-                  <StatusDot status="Healthy" />
+                  <StatusDot status="Operational" />
                   {servers.length - warningServerIds.size} Online
                 </span>
               }

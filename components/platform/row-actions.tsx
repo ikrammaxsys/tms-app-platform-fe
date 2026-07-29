@@ -20,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import type { PlatformActionFn } from "@/lib/platform/action-state"
+import { usePlatformAction } from "@/hooks/use-platform-action"
 
 export function RowActions({
   id,
@@ -32,9 +34,13 @@ export function RowActions({
   label: string
   viewHref: string
   editHref: string
-  deleteAction: (formData: FormData) => void | Promise<void>
+  deleteAction: PlatformActionFn
 }) {
   const [open, setOpen] = React.useState(false)
+  const onSettled = React.useCallback((ok: boolean) => {
+    if (ok) setOpen(false)
+  }, [])
+  const { formAction, pending } = usePlatformAction(deleteAction, { onSettled })
 
   return (
     <>
@@ -76,10 +82,10 @@ export function RowActions({
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <form action={deleteAction}>
+            <form action={formAction}>
               <input type="hidden" name="id" value={id} />
-              <Button type="submit" variant="destructive">
-                Delete
+              <Button type="submit" variant="destructive" disabled={pending}>
+                {pending ? "Deleting…" : "Delete"}
               </Button>
             </form>
           </DialogFooter>

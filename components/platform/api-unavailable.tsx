@@ -16,7 +16,7 @@ export function ApiUnavailable({ error }: { error?: unknown }) {
           <p className="text-muted-foreground">
             Start <code className="bg-muted rounded px-1 py-0.5 text-xs">tms-template-net8</code>{" "}
             on{" "}
-            <code className="bg-muted rounded px-1 py-0.5 text-xs">http://127.0.0.1:5128</code>
+            <code className="bg-muted rounded px-1 py-0.5 text-xs">{process.env.TMS_API_BASE_URL}</code>
             , then restart Next.js. Browser calls go through{" "}
             <code className="bg-muted rounded px-1 py-0.5 text-xs">/backend-api</code>.
           </p>

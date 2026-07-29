@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,9 @@ import {
 } from "@/components/ui/select"
 import { APP_STATUS_OPTIONS } from "@/lib/platform/options"
 import { toDateTimeLocal } from "@/lib/platform/format"
+import type { PlatformActionFn } from "@/lib/platform/action-state"
 import type { ApplicationView, ApplicationGroup, Server } from "@/lib/platform/types"
+import { usePlatformAction } from "@/hooks/use-platform-action"
 
 function Field({
   label,
@@ -34,24 +37,43 @@ function Field({
   )
 }
 
+function generateUid(): string {
+  const now = new Date()
+  const year = now.getUTCFullYear().toString().padStart(4, "0")
+  const month = (now.getUTCMonth() + 1).toString().padStart(2, "0")
+  const day = now.getUTCDate().toString().padStart(2, "0")
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, "0")
+  return `T${year}${month}${day}${random}`
+}
+
 export function ApplicationForm({
   action,
   application,
   servers,
   groups,
 }: {
-  action: (formData: FormData) => void | Promise<void>
+  action: PlatformActionFn
   application?: ApplicationView
   servers: Server[]
   groups: ApplicationGroup[]
 }) {
+  const [uid, setUid] = React.useState(application?.uid ?? "")
+
+  React.useEffect(() => {
+    if (!application) {
+      setUid(generateUid())
+    }
+  }, [application])
+
   const statusItems = Object.fromEntries(APP_STATUS_OPTIONS.map((s) => [s, s]))
   const serverItems = Object.fromEntries(servers.map((s) => [String(s.id), s.domain]))
   const groupItems = Object.fromEntries(groups.map((g) => [String(g.id), g.name]))
+  const { formAction, pending } = usePlatformAction(action)
 
   return (
-    <form action={action} className="max-w-3xl">
+    <form action={formAction} className="max-w-3xl">
       {application ? <input type="hidden" name="id" value={application.id} /> : null}
+      <input type="hidden" name="uid" value={uid} />
       <Card>
         <CardHeader>
           <CardTitle>Application Details</CardTitle>
@@ -73,6 +95,16 @@ export function ApplicationForm({
               required
               defaultValue={application?.version}
               placeholder="e.g. v4.0.3"
+            />
+          </Field>
+          <Field label="UID" htmlFor="uid">
+            <Input
+              id="uid"
+              name="uid"
+              readOnly
+              value={uid}
+              disabled
+              placeholder="Generated automatically when created"
             />
           </Field>
           <Field label="Commit ID" htmlFor="commit">
@@ -145,6 +177,7 @@ export function ApplicationForm({
               defaultValue={toDateTimeLocal(application?.lastDeployment)}
             />
           </Field>
+          <div className="sm:col-span-2">
           <Field label="App URL" htmlFor="appUrl">
             <Input
               id="appUrl"
@@ -153,6 +186,7 @@ export function ApplicationForm({
               placeholder="https://..."
             />
           </Field>
+          </div>
           <div className="sm:col-span-2">
             <Field label="Repository URL" htmlFor="repositoryUrl">
               <Input
@@ -167,7 +201,9 @@ export function ApplicationForm({
       </Card>
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="outline" render={<Link href="/applications">Cancel</Link>} />
-        <Button type="submit">{application ? "Save changes" : "Create application"}</Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : application ? "Save changes" : "Create application"}
+        </Button>
       </div>
     </form>
   )

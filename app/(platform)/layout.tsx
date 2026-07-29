@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { NavbarClock } from "@/components/navbar-clock"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -20,7 +21,8 @@ export default function PlatformLayout({
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 !h-4" />
           <span className="font-bold text-lg">TMS App Platform</span>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
+            <NavbarClock />
             <ThemeToggle />
           </div>
         </header>

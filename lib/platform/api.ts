@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./types"
 
-const DEFAULT_BASE = "http://127.0.0.1:5128"
+const DEFAULT_BASE = "http://13.229.238.4:5128"
 
 /**
  * Server: talk directly to the .NET API.
@@ -11,7 +11,9 @@ export function apiBaseUrl(): string {
   if (typeof window !== "undefined") {
     return "/backend-api"
   }
-  return (process.env.TMS_API_BASE_URL || DEFAULT_BASE).replace(/\/$/, "")
+  console.log(process.env.NEXT_PUBLIC_TMS_API_BASE_URL)
+  console.log(DEFAULT_BASE)
+  return (process.env.NEXT_PUBLIC_TMS_API_BASE_URL || DEFAULT_BASE).replace(/\/$/, "")
 }
 
 export class ApiError extends Error {

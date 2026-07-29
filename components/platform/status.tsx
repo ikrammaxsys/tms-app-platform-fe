@@ -1,14 +1,19 @@
 import { cn } from "@/lib/utils"
 import type { AppStatus, Environment } from "@/lib/platform/types"
 
-const STATUS_STYLES: Record<AppStatus, { dot: string; text: string }> = {
+type StatusLabelValue = AppStatus | "Healthy" | "Warning" | "Down" | "Inactive" | "Unknown"
+
+const STATUS_STYLES: Record<StatusLabelValue, { dot: string; text: string }> = {
   Healthy: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
   Warning: { dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
   Down: { dot: "bg-red-500", text: "text-red-600 dark:text-red-400" },
   Inactive: { dot: "bg-muted-foreground", text: "text-muted-foreground" },
+  Unknown: { dot: "bg-slate-300 dark:bg-slate-600", text: "text-slate-600 dark:text-slate-400" },
+  Operational: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+  Degraded: { dot: "bg-red-500", text: "text-red-600 dark:text-red-400" },
 }
 
-export function StatusDot({ status }: { status: AppStatus }) {
+export function StatusDot({ status }: { status: StatusLabelValue }) {
   return (
     <span
       className={cn("inline-block size-2 shrink-0 rounded-full", STATUS_STYLES[status].dot)}
@@ -17,7 +22,7 @@ export function StatusDot({ status }: { status: AppStatus }) {
   )
 }
 
-export function StatusLabel({ status }: { status: AppStatus }) {
+export function StatusLabel({ status }: { status: StatusLabelValue }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold", STATUS_STYLES[status].text)}>
       <StatusDot status={status} />
@@ -29,7 +34,7 @@ export function StatusLabel({ status }: { status: AppStatus }) {
 const ENV_STYLES: Record<Environment, string> = {
   Live: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   Test: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  Development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  Development: "bg-primary/10 text-primary",
 }
 
 export function EnvironmentBadge({

@@ -13,6 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import type { PlatformActionFn } from "@/lib/platform/action-state"
+import { usePlatformAction } from "@/hooks/use-platform-action"
 
 export function DeleteButton({
   id,
@@ -21,9 +23,13 @@ export function DeleteButton({
 }: {
   id: number
   label: string
-  action: (formData: FormData) => void | Promise<void>
+  action: PlatformActionFn
 }) {
   const [open, setOpen] = React.useState(false)
+  const onSettled = React.useCallback((ok: boolean) => {
+    if (ok) setOpen(false)
+  }, [])
+  const { formAction, pending } = usePlatformAction(action, { onSettled })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -47,10 +53,10 @@ export function DeleteButton({
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <form action={action}>
+          <form action={formAction}>
             <input type="hidden" name="id" value={id} />
-            <Button type="submit" variant="destructive">
-              Delete
+            <Button type="submit" variant="destructive" disabled={pending}>
+              {pending ? "Deleting…" : "Delete"}
             </Button>
           </form>
         </DialogFooter>

@@ -25,7 +25,7 @@ import { DeploymentsPanel } from "@/components/platform/deployments-panel"
 import { tmsApi } from "@/lib/platform/api-service"
 import { formatDateTime } from "@/lib/platform/format"
 import type { ApplicationDetail } from "@/lib/platform/queries"
-import type { Application, Environment } from "@/lib/platform/types"
+import type { Application, AppStatus, Environment } from "@/lib/platform/types"
 import { cn } from "@/lib/utils"
 
 const TABS = [
@@ -69,6 +69,18 @@ function ComingSoon({ title, description }: { title: string; description: string
 
 function OverviewPanel({ detail }: { detail: ApplicationDetail }) {
   const { app, health, versionDrift, endpoints } = detail
+  const displayStatus: "Operational" | "Degraded" | "Unknown" =
+    detail.uptimeTimeline
+      ? detail.uptimeTimeline.totalChecks === 0
+        ? "Unknown"
+        : detail.uptimeTimeline.isOnline
+        ? "Operational"
+        : "Degraded"
+      : app.isOnline === true
+      ? "Operational"
+      : app.isOnline === false
+      ? "Degraded"
+      : "Unknown"
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -90,7 +102,7 @@ function OverviewPanel({ detail }: { detail: ApplicationDetail }) {
             <CardTitle className="text-base">Today&apos;s health timeline</CardTitle>
           </CardHeader>
           <CardContent>
-            <DayTimeline segments={detail.todayTimeline} />
+            <DayTimeline segments={detail.todayTimeline} asOf={detail.todayTimelineAsOf} />
           </CardContent>
         </Card>
       </div>
@@ -103,7 +115,7 @@ function OverviewPanel({ detail }: { detail: ApplicationDetail }) {
           <CardContent>
             <dl className="divide-y text-sm">
               <Row label="Status">
-                <StatusLabel status={app.status} />
+                <StatusLabel status={displayStatus} />
               </Row>
               <Row label="Availability">{health.availability}</Row>
               <Row label="Current uptime">{health.currentUptime}</Row>            
@@ -287,7 +299,7 @@ function ServersPanel({
 
 export function ApplicationDetailTabs({ detail }: { detail: ApplicationDetail }) {
   return (
-    <Tabs defaultValue="servers" className="gap-4">
+    <Tabs defaultValue="overview" className="gap-4">
       <TabsList
         variant="line"
         className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0"

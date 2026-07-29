@@ -1,9 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
 
-import { ApiError } from "./api"
+import {
+  actionErrorMessage,
+  type PlatformActionState,
+} from "./action-state"
 import { tmsApi } from "./api-service"
 import {
   createApplicationApi,
@@ -34,81 +36,116 @@ function revalidatePlatform(applicationId?: number) {
   if (applicationId) revalidatePath(`/applications/${applicationId}`)
 }
 
+async function runAction(
+  work: () => Promise<unknown>,
+  success: { message: string; redirectTo: string },
+  applicationId?: number,
+): Promise<PlatformActionState> {
+  try {
+    await work()
+    revalidatePlatform(applicationId)
+    return { ok: true, message: success.message, redirectTo: success.redirectTo }
+  } catch (error) {
+    return { ok: false, message: actionErrorMessage(error) }
+  }
+}
+
 /* ------------------------------- Servers -------------------------------- */
 
-export async function createServer(formData: FormData) {
-  await createServerApi({
-    domain: str(formData, "domain"),
-    ipAddress: str(formData, "ipAddress"),
-    environment: str(formData, "environment") || "Live",
-    internalExternal: str(formData, "internalExternal") || "Internal",
-    country: str(formData, "country"),
-    provider: str(formData, "provider") || "AWS",
-  })
-  revalidatePlatform()
-  redirect("/servers")
+export async function createServer(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
+  return runAction(
+    () =>
+      createServerApi({
+        domain: str(formData, "domain"),
+        ipAddress: str(formData, "ipAddress"),
+        environment: str(formData, "environment") || "Live",
+        internalExternal: str(formData, "internalExternal") || "Internal",
+        country: str(formData, "country"),
+        provider: str(formData, "provider") || "AWS",
+      }),
+    { message: "Server created", redirectTo: "/servers" },
+  )
 }
 
-export async function updateServer(formData: FormData) {
+export async function updateServer(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
-  await updateServerApi(id, {
-    domain: str(formData, "domain"),
-    ipAddress: str(formData, "ipAddress"),
-    environment: str(formData, "environment") || "Live",
-    internalExternal: str(formData, "internalExternal") || "Internal",
-    country: str(formData, "country"),
-    provider: str(formData, "provider") || "AWS",
-  })
-  revalidatePlatform()
-  redirect(`/servers/${id}`)
+  return runAction(
+    () =>
+      updateServerApi(id, {
+        domain: str(formData, "domain"),
+        ipAddress: str(formData, "ipAddress"),
+        environment: str(formData, "environment") || "Live",
+        internalExternal: str(formData, "internalExternal") || "Internal",
+        country: str(formData, "country"),
+        provider: str(formData, "provider") || "AWS",
+      }),
+    { message: "Server updated", redirectTo: `/servers/${id}` },
+  )
 }
 
-export async function deleteServer(formData: FormData) {
+export async function deleteServer(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
-  try {
-    await deleteServerApi(id)
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw new Error(error.message)
-    }
-    throw error
-  }
-  revalidatePlatform()
-  redirect("/servers")
+  return runAction(
+    () => deleteServerApi(id),
+    { message: "Server deleted", redirectTo: "/servers" },
+  )
 }
 
 /* --------------------------- Application Groups ------------------------- */
 
-export async function createGroup(formData: FormData) {
-  await createGroupApi({ name: str(formData, "name") })
-  revalidatePlatform()
-  redirect("/application-groups")
+export async function createGroup(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
+  return runAction(
+    () => createGroupApi({ name: str(formData, "name") }),
+    { message: "Application group created", redirectTo: "/application-groups" },
+  )
 }
 
-export async function updateGroup(formData: FormData) {
+export async function updateGroup(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
-  await updateGroupApi(id, { name: str(formData, "name") })
-  revalidatePlatform()
-  redirect(`/application-groups/${id}`)
+  return runAction(
+    () => updateGroupApi(id, { name: str(formData, "name") }),
+    { message: "Application group updated", redirectTo: `/application-groups/${id}` },
+  )
 }
 
-export async function deleteGroup(formData: FormData) {
+export async function deleteGroup(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
-  try {
-    await deleteGroupApi(id)
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw new Error(error.message)
-    }
-    throw error
-  }
-  revalidatePlatform()
-  redirect("/application-groups")
+  return runAction(
+    () => deleteGroupApi(id),
+    { message: "Application group deleted", redirectTo: "/application-groups" },
+  )
 }
 
 /* ----------------------------- Applications ----------------------------- */
 
-function applicationBody(formData: FormData) {
+function generateApplicationUid(): string {
+  const now = new Date()
+  const year = now.getUTCFullYear().toString().padStart(4, "0")
+  const month = (now.getUTCMonth() + 1).toString().padStart(2, "0")
+  const day = now.getUTCDate().toString().padStart(2, "0")
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, "0")
+  return `T${year}${month}${day}${random}`
+}
+
+function applicationBody(formData: FormData, includeUid = false) {
   const lastDeployment = str(formData, "lastDeployment")
   let lastDeploymentIso: string | null = null
   if (lastDeployment) {
@@ -116,7 +153,10 @@ function applicationBody(formData: FormData) {
     if (!Number.isNaN(parsed.getTime())) lastDeploymentIso = parsed.toISOString()
   }
 
+  const uid = str(formData, "uid")
+
   return {
+    ...((includeUid || uid) ? { uid: uid || generateApplicationUid() } : {}),
     name: str(formData, "name"),
     version: str(formData, "version"),
     commit: str(formData, "commit"),
@@ -129,24 +169,36 @@ function applicationBody(formData: FormData) {
   }
 }
 
-export async function createApplication(formData: FormData) {
-  await createApplicationApi(applicationBody(formData))
-  revalidatePlatform()
-  redirect("/applications")
+export async function createApplication(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
+  return runAction(
+    () => createApplicationApi(applicationBody(formData, true)),
+    { message: "Application created", redirectTo: "/applications" },
+  )
 }
 
-export async function updateApplication(formData: FormData) {
+export async function updateApplication(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
-  await updateApplicationApi(id, applicationBody(formData))
-  revalidatePlatform()
-  redirect(`/applications/${id}`)
+  return runAction(
+    () => updateApplicationApi(id, applicationBody(formData)),
+    { message: "Application updated", redirectTo: `/applications/${id}` },
+  )
 }
 
-export async function deleteApplication(formData: FormData) {
+export async function deleteApplication(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
-  await deleteApplicationApi(id)
-  revalidatePlatform()
-  redirect("/applications")
+  return runAction(
+    () => deleteApplicationApi(id),
+    { message: "Application deleted", redirectTo: "/applications" },
+  )
 }
 
 /* ------------------------- Application Deployments ------------------------- */
@@ -162,28 +214,43 @@ function deploymentBody(formData: FormData) {
   }
 }
 
-export async function createDeployment(formData: FormData) {
+export async function createDeployment(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const body = deploymentBody(formData)
-  await tmsApi.createDeployment(body)
-  revalidatePlatform(body.applicationId)
-  const returnTo = str(formData, "returnTo")
-  redirect(returnTo || "/deployments")
+  const returnTo = str(formData, "returnTo") || "/deployments"
+  return runAction(
+    () => tmsApi.createDeployment(body),
+    { message: "Deployment created", redirectTo: returnTo },
+    body.applicationId,
+  )
 }
 
-export async function updateDeployment(formData: FormData) {
+export async function updateDeployment(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
   const body = deploymentBody(formData)
-  await tmsApi.updateDeployment(id, body)
-  revalidatePlatform(body.applicationId)
-  const returnTo = str(formData, "returnTo")
-  redirect(returnTo || "/deployments")
+  const returnTo = str(formData, "returnTo") || "/deployments"
+  return runAction(
+    () => tmsApi.updateDeployment(id, body),
+    { message: "Deployment updated", redirectTo: returnTo },
+    body.applicationId,
+  )
 }
 
-export async function deleteDeployment(formData: FormData) {
+export async function deleteDeployment(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
   const id = num(formData, "id")
   const applicationId = num(formData, "applicationId")
-  await tmsApi.deleteDeployment(id)
-  revalidatePlatform(applicationId || undefined)
-  const returnTo = str(formData, "returnTo")
-  redirect(returnTo || "/deployments")
+  const returnTo = str(formData, "returnTo") || "/deployments"
+  return runAction(
+    () => tmsApi.deleteDeployment(id),
+    { message: "Deployment deleted", redirectTo: returnTo },
+    applicationId || undefined,
+  )
 }

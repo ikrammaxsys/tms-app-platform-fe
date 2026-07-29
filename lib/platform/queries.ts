@@ -3,6 +3,7 @@ import { tmsApi } from "./api-service"
 import {
   availabilityDays,
   averageLatency,
+  availabilityDayFromUptimePoint,
   toApplicationView,
 } from "./view"
 import type {
@@ -10,9 +11,13 @@ import type {
   ApplicationGroup,
   ApplicationUpsert,
   ApplicationView,
+  AvailabilityDay,
+  DayStatus,
   SelectOption,
   Server,
   ServerUpsert,
+  UptimePointStatus,
+  UptimeTimeline,
 } from "./types"
 
 export {
@@ -157,7 +162,7 @@ export interface ServerHealth {
   id: number
   name: string
   environment: string
-  status: "Healthy" | "Warning"
+  status: "Operational" | "Degraded"
   healthPercent: number
 }
 
@@ -180,7 +185,7 @@ export async function getOverview(): Promise<OverviewData> {
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const warningServerIds = new Set(
-    apps.filter((a) => a.status === "Warning" || a.status === "Down").map((a) => a.serverId),
+    apps.filter((a) => a.status === "Degraded" || a.status === "Down").map((a) => a.serverId),
   )
 
   const avgUptime =
@@ -198,18 +203,18 @@ export async function getOverview(): Promise<OverviewData> {
     }),
     summary: {
       applicationsTotal: apps.length,
-      applicationsHealthy: apps.filter((a) => a.status === "Healthy").length,
+      applicationsHealthy: apps.filter((a) => a.status === "Operational").length,
       serversTotal: servers.length,
       serversOnline: servers.length - warningServerIds.size,
       avgUptime,
-      alertsCount: apps.filter((a) => a.status === "Warning" || a.status === "Down").length,
+      alertsCount: apps.filter((a) => a.status === "Degraded" || a.status === "Down").length,
     },
     applications: apps,
     servers: servers.map((s) => ({
       id: s.id,
       name: s.domain,
       environment: s.environment,
-      status: warningServerIds.has(s.id) ? "Warning" : "Healthy",
+      status: warningServerIds.has(s.id) ? "Degraded" : "Operational",
       healthPercent: warningServerIds.has(s.id) ? 78 : 99,
     })),
   }
@@ -219,7 +224,9 @@ export async function getOverview(): Promise<OverviewData> {
 
 export interface HourSegment {
   hour: string
-  status: "Healthy" | "Down"
+  status: DayStatus
+  label?: string
+  checks?: AvailabilityDay["checks"]
 }
 
 export interface DriftGroup {
@@ -243,8 +250,11 @@ export interface ApplicationDetail {
   repository: string
   repositoryUrl: string
   hasVersionDrift: boolean
+  uptimeTimeline: UptimeTimeline | null
   availabilityDays: ReturnType<typeof availabilityDays>
-  todayTimeline: HourSegment[]
+  todayTimeline: AvailabilityDay[]
+  /** API `to` timestamp for today's hourly timeline (used to dim future hours). */
+  todayTimelineAsOf: string | null
   health: {
     availability: string
     availabilityPercent: number
@@ -267,27 +277,78 @@ export interface ApplicationDetail {
   endpoints: EndpointItem[]
 }
 
+export function uptimeStatusToDayStatus(status: UptimePointStatus): DayStatus {
+  if (status === "Up") return "Healthy"
+  if (status === "Degraded") return "Partial"
+  if (status === "Down") return "Down"
+  return "NoData"
+}
+
+export function uptimeTimelineToAvailabilityDays(timeline: UptimeTimeline): AvailabilityDay[] {
+  return timeline.points.map(availabilityDayFromUptimePoint)
+}
+
+function fallbackTodayTimeline(
+  app: Pick<Application, "id" | "status">,
+): AvailabilityDay[] {
+  const end = new Date()
+  end.setUTCHours(0, 0, 0, 0)
+  const isDown = app.status === "Down"
+  const isDegraded = app.status === "Degraded"
+  return Array.from({ length: 24 }, (_, hour) => {
+    let status: DayStatus = "NoData"
+    if (isDown && hour >= 8) status = "Down"
+    else if (isDegraded && (hour === 4 || hour === 5)) status = "Down"
+    else if (!isDown && !isDegraded && hour === 12) status = "Partial"
+    const date = new Date(end)
+    date.setUTCHours(hour, 0, 0, 0)
+    const label = `${String(hour).padStart(2, "0")}:00`
+    return {
+      date: date.toISOString(),
+      label,
+      status,
+    }
+  })
+}
+
+export async function getApplicationUptimeTimeline(
+  applicationId: number,
+  days = 30,
+): Promise<UptimeTimeline | undefined> {
+  try {
+    return await tmsApi.getApplicationUptimeTimeline(applicationId, days)
+  } catch {
+    return undefined
+  }
+}
+
 export async function getApplicationDetail(id: number): Promise<ApplicationDetail | undefined> {
   const app = await getApplicationById(id)
   if (!app) return undefined
 
   const allApps = await getApplications().catch(() => [app])
   const isDown = app.status === "Down"
-  const isWarning = app.status === "Warning"
-  const days = availabilityDays(app)
+  const isDegraded = app.status === "Degraded"
+  const [uptimeTimeline, todayUptimeTimeline] = await Promise.all([
+    getApplicationUptimeTimeline(app.id, 30),
+    getApplicationUptimeTimeline(app.id, 1),
+  ])
+  const days = uptimeTimeline?.points?.length
+    ? uptimeTimelineToAvailabilityDays(uptimeTimeline)
+    : availabilityDays(app)
   const healthyDays = days.filter((d) => d.status === "Healthy").length
-  const availPct = days.length === 0 ? 100 : (100 * healthyDays) / days.length
+  const availPct = uptimeTimeline
+    ? uptimeTimeline.uptimePercent
+    : days.length === 0
+    ? 100
+    : (100 * healthyDays) / days.length
 
   const sameName = allApps.filter((a) => a.name.toLowerCase() === app.name.toLowerCase())
   const hasVersionDrift = new Set(sameName.map((a) => a.version.toLowerCase())).size > 1
 
-  const hours = ["00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22"]
-  const todayTimeline: HourSegment[] = hours.map((h, i) => {
-    let status: "Healthy" | "Down" = "Healthy"
-    if (isDown && i >= 8) status = "Down"
-    else if (isWarning && (i === 4 || i === 5)) status = "Down"
-    return { hour: h, status }
-  })
+  const todayTimeline = todayUptimeTimeline?.points?.length
+    ? uptimeTimelineToAvailabilityDays(todayUptimeTimeline)
+    : fallbackTodayTimeline(app)
 
   const driftByEnv = new Map<string, DriftGroup>()
   for (const a of sameName) {
@@ -312,12 +373,22 @@ export async function getApplicationDetail(id: number): Promise<ApplicationDetai
     repository: app.repositoryUrl || app.commit,
     repositoryUrl: app.repositoryUrl || "#",
     hasVersionDrift,
+    uptimeTimeline: uptimeTimeline ?? null,
     availabilityDays: days,
     todayTimeline,
+    todayTimelineAsOf: todayUptimeTimeline?.to ?? null,
     health: {
-      availability: `${availPct.toFixed(2)}%`,
+      availability:
+        uptimeTimeline?.totalChecks === 0
+          ? "No uptime data"
+          : `${availPct.toFixed(2)}%`,
       availabilityPercent: availPct,
-      currentUptime: isDown ? "0m" : `${healthyDays}d (30d window)`,
+      currentUptime:
+        uptimeTimeline?.totalChecks === 0
+          ? "No uptime data"
+          : isDown
+          ? "0m"
+          : `${healthyDays}d (30d window)`,
       lastRestart: app.lastDeployment
         ? new Date(app.lastDeployment).toLocaleDateString("en-US", {
             day: "2-digit",
@@ -325,14 +396,14 @@ export async function getApplicationDetail(id: number): Promise<ApplicationDetai
             year: "numeric",
           })
         : "-",
-      cpu: isDown ? "0%" : isWarning ? "68%" : "31%",
-      memory: isDown ? "0 GB / 8 GB" : isWarning ? "5.2 GB / 8 GB" : "2.4 GB / 8 GB",
+      cpu: isDown ? "0%" : isDegraded ? "68%" : "31%",
+      memory: isDown ? "0 GB / 8 GB" : isDegraded ? "5.2 GB / 8 GB" : "2.4 GB / 8 GB",
       disk: "52%",
     },
     performance: {
       requestsPerSec: isDown ? "0" : "42",
       avgResponseMs: String(averageLatency(app)),
-      errorRate: isDown ? "100%" : isWarning ? "2.4%" : "0.08%",
+      errorRate: isDown ? "100%" : isDegraded ? "2.4%" : "0.08%",
       p95LatencyMs: isDown ? "-" : "148",
       cpuSparkline: [12, 18, 16, 22, 28, 35, 30, 24, 20, 18, 22, 28],
       memorySparkline: [40, 42, 45, 48, 52, 55, 58, 56, 50, 48, 46, 44],
@@ -384,6 +455,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         description: "Send notification to team when new deployment is deployed.",
         tag: "Notification",
       },
+      {
+        title: "Centralize agent config",
+        description: "Centralize the configuration of the application monitoring agent.",
+        tag: "Configuration",
+      }
     ],
     inProgress: [
       {

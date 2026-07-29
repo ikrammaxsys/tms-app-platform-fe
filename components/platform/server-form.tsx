@@ -19,6 +19,8 @@ import {
   PROVIDER_OPTIONS,
 } from "@/lib/platform/options"
 import type { Server } from "@/lib/platform/types"
+import type { PlatformActionFn } from "@/lib/platform/action-state"
+import { usePlatformAction } from "@/hooks/use-platform-action"
 
 function Field({
   label,
@@ -41,15 +43,16 @@ export function ServerForm({
   action,
   server,
 }: {
-  action: (formData: FormData) => void | Promise<void>
+  action: PlatformActionFn
   server?: Server
 }) {
   const envItems = Object.fromEntries(ENVIRONMENT_OPTIONS.map((v) => [v, v]))
   const ieItems = Object.fromEntries(INTERNAL_EXTERNAL_OPTIONS.map((v) => [v, v]))
   const providerItems = Object.fromEntries(PROVIDER_OPTIONS.map((v) => [v, v]))
+  const { formAction, pending } = usePlatformAction(action)
 
   return (
-    <form action={action} className="max-w-3xl">
+    <form action={formAction} className="max-w-3xl">
       {server ? <input type="hidden" name="id" value={server.id} /> : null}
       <Card>
         <CardHeader>
@@ -140,7 +143,9 @@ export function ServerForm({
       </Card>
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="outline" render={<Link href="/servers">Cancel</Link>} />
-        <Button type="submit">{server ? "Save changes" : "Create server"}</Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : server ? "Save changes" : "Create server"}
+        </Button>
       </div>
     </form>
   )

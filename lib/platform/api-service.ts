@@ -13,6 +13,7 @@ import type {
   SelectOption,
   Server,
   ServerUpsert,
+  UptimeTimeline,
 } from "./types"
 
 export const tmsApi = {
@@ -47,6 +48,9 @@ export const tmsApi = {
   listApplicationsTable: () => apiFetch<Record<string, unknown>[]>("/api/applications/list"),
 
   getApplication: (id: number) => apiFetch<Application>(`/api/applications/${id}`),
+
+  getApplicationUptimeTimeline: (applicationId: number, days = 30) =>
+    apiFetch<UptimeTimeline>(`/api/uptime/${applicationId}/timeline?days=${days}`),
 
   createApplication: (body: ApplicationUpsert) =>
     apiFetch<Application>("/api/applications", { method: "POST", body }),

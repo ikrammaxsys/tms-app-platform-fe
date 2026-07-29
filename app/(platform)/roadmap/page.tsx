@@ -64,7 +64,7 @@ export default async function RoadmapPage() {
       />
       <div className="grid gap-5 md:grid-cols-3">
         <Column title="Ideas" accent="bg-slate-400" items={roadmap.ideas} />
-        <Column title="In Progress" accent="bg-blue-500" items={roadmap.inProgress} />
+        <Column title="In Progress" accent="bg-primary" items={roadmap.inProgress} />
         <Column title="Shipped" accent="bg-emerald-500" items={roadmap.shipped} />
       </div>
     </div>

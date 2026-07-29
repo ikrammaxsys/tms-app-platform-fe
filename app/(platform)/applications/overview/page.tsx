@@ -18,12 +18,13 @@ import {
 } from "@/components/ui/select"
 import { tmsApi } from "@/lib/platform/api-service"
 import { toApplicationView } from "@/lib/platform/view"
-import type { ApplicationView } from "@/lib/platform/types"
+import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
 
 export default function ApplicationOverviewPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<unknown>(null)
   const [applications, setApplications] = React.useState<ApplicationView[]>([])
+  const [uptimeTimelines, setUptimeTimelines] = React.useState<Record<number, UptimeTimeline | undefined>>({})
   const [query, setQuery] = React.useState("")
   const [serverFilter, setServerFilter] = React.useState("all")
   const [environmentFilter, setEnvironmentFilter] = React.useState("all")
@@ -40,11 +41,25 @@ export default function ApplicationOverviewPage() {
         ])
         if (cancelled) return
         const byId = new Map((servers ?? []).map((s) => [s.id, s]))
-        setApplications(
-          (apps ?? [])
-            .map((a) => toApplicationView(a, byId.get(a.serverId)))
-            .sort((a, b) => a.name.localeCompare(b.name)),
+        const applicationViews = (apps ?? [])
+          .map((a) => toApplicationView(a, byId.get(a.serverId)))
+          .sort((a, b) => a.name.localeCompare(b.name))
+
+        setApplications(applicationViews)
+
+        const timelineEntries = await Promise.all(
+          applicationViews.map(async (app) => {
+            try {
+              const timeline = await tmsApi.getApplicationUptimeTimeline(app.id)
+              return [app.id, timeline] as const
+            } catch {
+              return [app.id, undefined] as const
+            }
+          }),
         )
+
+        if (cancelled) return
+        setUptimeTimelines(Object.fromEntries(timelineEntries))
       } catch (err) {
         if (!cancelled) setError(err)
       } finally {
@@ -88,11 +103,15 @@ export default function ApplicationOverviewPage() {
         description="Live application health and 7-day uptime at a glance"
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" render={<Link href="/applications" />}>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/applications" />}
+            >
               <LayoutGrid className="size-4" />
               Table view
             </Button>
-            <Button render={<Link href="/applications/new" />}>
+            <Button nativeButton={false} render={<Link href="/applications/new" />}>
               <Plus className="size-4" />
               Create Application
             </Button>
@@ -110,7 +129,7 @@ export default function ApplicationOverviewPage() {
             className="pl-8"
           />
         </div>
-        <Select value={serverFilter} onValueChange={setServerFilter}>
+        <Select value={serverFilter} onValueChange={(value) => setServerFilter(value ?? "all")}>
           <SelectTrigger className="w-full md:w-44">
             <SelectValue placeholder="All servers" />
           </SelectTrigger>
@@ -125,7 +144,10 @@ export default function ApplicationOverviewPage() {
               ))}
           </SelectContent>
         </Select>
-        <Select value={environmentFilter} onValueChange={setEnvironmentFilter}>
+        <Select
+          value={environmentFilter}
+          onValueChange={(value) => setEnvironmentFilter(value ?? "all")}
+        >
           <SelectTrigger className="w-full md:w-44">
             <SelectValue placeholder="All environments" />
           </SelectTrigger>
@@ -142,7 +164,11 @@ export default function ApplicationOverviewPage() {
         </Select>
       </div>
 
-      <ApplicationCards applications={filteredApplications} loading={loading} />
+      <ApplicationCards
+        applications={filteredApplications}
+        loading={loading}
+        uptimeTimelines={uptimeTimelines}
+      />
     </div>
   )
 }

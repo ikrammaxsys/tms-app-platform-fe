@@ -1,8 +1,40 @@
 export type Environment = "Live" | "Test" | "Development"
 export type InternalExternal = "Internal" | "External"
 export type Provider = "AWS" | "On-premise" | "Vendor" | "Azure"
-export type AppStatus = "Healthy" | "Warning" | "Down" | "Inactive"
-export type DayStatus = "Healthy" | "Partial" | "Down"
+export type AppStatus = "Operational" | "Degraded" | "Down" | "Inactive" | "Unknown"
+/** Per-day / per-hour uptime strip bucket (not the same as live app status). */
+export type DayStatus = "Healthy" | "Partial" | "Down" | "NoData"
+
+export type UptimePointStatus = "Up" | "Down" | "Degraded" | "NoData"
+
+export interface UptimeTimelinePoint {
+  label: string
+  from: string
+  to: string
+  uptimePercent: number | null
+  status: UptimePointStatus
+  totalChecks: number
+  upCount: number
+  degradedCount: number
+  downCount: number
+}
+
+export interface UptimeTimeline {
+  applicationId: number
+  isOnline: boolean
+  currentStatus: string
+  lastChecked: string
+  days: number
+  granularity: string
+  from: string
+  to: string
+  uptimePercent: number
+  totalChecks: number
+  upCount: number
+  degradedCount: number
+  downCount: number
+  points: UptimeTimelinePoint[]
+}
 
 /** Matches ApiResponse<T> from tms-template-net8. */
 export interface ApiResponse<T> {
@@ -46,6 +78,7 @@ export interface ApplicationGroupUpsert {
 /** Matches ApplicationItem from the .NET API. */
 export interface Application {
   id: number
+  uid?: string
   name: string
   version: string
   commit: string
@@ -59,6 +92,7 @@ export interface Application {
   serverEnvironment: Environment | string
   serverIpAddress: string
   applicationGroupName: string
+  isOnline?: boolean
   serverDetail?: {
     domain?: string
     environment?: string
@@ -70,6 +104,7 @@ export interface Application {
 }
 
 export interface ApplicationUpsert {
+  uid?: string
   name: string
   version: string
   commit: string
@@ -91,10 +126,18 @@ export interface ApplicationView extends Application {
   uptimePercent: number
 }
 
+export interface AvailabilityDayChecks {
+  totalChecks: number
+  upCount: number
+  downCount: number
+  degradedCount: number
+}
+
 export interface AvailabilityDay {
   date: string
   label: string
   status: DayStatus
+  checks?: AvailabilityDayChecks
 }
 
 export interface SelectOption {

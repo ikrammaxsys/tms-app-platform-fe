@@ -91,10 +91,13 @@ export default async function ApplicationDetailPage({
 
           <Separator className="my-4" />
 
-          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
             <Meta label="Version">
-              <span className="text-primary font-mono">{app.version}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-primary font-mono">{app.version}</span>
+              </div>
             </Meta>
+            <Meta label="UID"><span className="text-muted-foreground">{app.uid || "-"}</span></Meta>
             <Meta label="Environment">{app.serverEnvironment}</Meta>
             <Meta label="Owner">{detail.owner}</Meta>
             <Meta label="Internal/External">{detail.runtime}</Meta>
