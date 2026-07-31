@@ -7,6 +7,7 @@ import { Plus } from "lucide-react"
 import { PageHeader } from "@/components/platform/page-header"
 import { GroupsTable } from "@/components/platform/groups-table"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
+import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -18,6 +19,7 @@ export default function ApplicationGroupsPage() {
   const [error, setError] = React.useState<unknown>(null)
   const [groups, setGroups] = React.useState<ApplicationGroup[]>([])
   const [appCounts, setAppCounts] = React.useState<Record<number, number>>({})
+  const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
     let cancelled = false
@@ -46,7 +48,7 @@ export default function ApplicationGroupsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshCounter])
 
   if (error) {
     return (
@@ -54,6 +56,12 @@ export default function ApplicationGroupsPage() {
         <PageHeader
           title="Application Groups"
           description="Organize applications into logical groups"
+          actions={
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          }
         />
         <ApiUnavailable error={error} />
       </div>
@@ -66,10 +74,16 @@ export default function ApplicationGroupsPage() {
         title="Application Groups"
         description="Organize applications into logical groups"
         actions={
-          <Button render={<Link href="/application-groups/new" />}>
-            <Plus />
-            Create Group
-          </Button>
+          <>
+            <Button render={<Link href="/application-groups/new" />}>
+              <Plus />
+              Create Group
+            </Button>
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          </>
         }
       />
       <Card>

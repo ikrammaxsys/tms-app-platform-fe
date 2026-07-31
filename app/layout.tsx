@@ -15,7 +15,7 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "TMS App Platform",
+  title: "Toray App Platform",
   description: "Central overview of applications, servers, health, and operations.",
   icons: {
     icon: "/img/toray-logo2.png",

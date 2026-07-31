@@ -7,6 +7,7 @@ import { Plus } from "lucide-react"
 import { PageHeader } from "@/components/platform/page-header"
 import { ServersTable } from "@/components/platform/servers-table"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
+import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -17,6 +18,7 @@ export default function ServersPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<unknown>(null)
   const [servers, setServers] = React.useState<Server[]>([])
+  const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
     let cancelled = false
@@ -37,12 +39,21 @@ export default function ServersPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshCounter])
 
   if (error) {
     return (
       <div>
-        <PageHeader title="Servers" description="Infra listing — servers across environments" />
+        <PageHeader
+          title="Servers"
+          description="Infra listing — servers across environments"
+          actions={
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          }
+        />
         <ApiUnavailable error={error} />
       </div>
     )
@@ -54,10 +65,16 @@ export default function ServersPage() {
         title="Servers"
         description="Infra listing — servers across environments"
         actions={
-          <Button render={<Link href="/servers/new" />}>
-            <Plus />
-            Create Server
-          </Button>
+          <>
+            <Button render={<Link href="/servers/new" />}>
+              <Plus />
+              Create Server
+            </Button>
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          </>
         }
       />
       <Card>

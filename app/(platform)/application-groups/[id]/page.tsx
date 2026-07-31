@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { DeleteButton } from "@/components/platform/delete-button"
+import { PageRefreshButton } from "@/components/platform/page-refresh-button"
 import { ApplicationsTable } from "@/components/platform/applications-table"
 import { deleteGroup } from "@/lib/platform/actions"
 import { getGroupApplications, getGroupById } from "@/lib/platform/queries"
@@ -57,6 +58,7 @@ export default async function GroupDetailPage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <PageRefreshButton />
               <Button
                 variant="outline"
                 size="sm"

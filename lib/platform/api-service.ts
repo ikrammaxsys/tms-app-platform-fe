@@ -9,10 +9,13 @@ import type {
   ApplicationDeploymentUpsert,
   ApplicationGroup,
   ApplicationGroupUpsert,
+  ApplicationLogChunkContent,
+  ApplicationLogList,
   ApplicationUpsert,
   SelectOption,
   Server,
   ServerUpsert,
+  HostMetricsTimeline,
   UptimeTimeline,
 } from "./types"
 
@@ -51,6 +54,9 @@ export const tmsApi = {
 
   getApplicationUptimeTimeline: (applicationId: number, days = 30) =>
     apiFetch<UptimeTimeline>(`/api/uptime/${applicationId}/timeline?days=${days}`),
+
+  getServerHostTimeline: (serverId: number, days = 7) =>
+    apiFetch<HostMetricsTimeline>(`/api/uptime/${serverId}/host-timeline?days=${days}`),
 
   createApplication: (body: ApplicationUpsert) =>
     apiFetch<Application>("/api/applications", { method: "POST", body }),
@@ -107,4 +113,18 @@ export const tmsApi = {
 
   deleteDeployment: (id: number) =>
     apiFetch<boolean>(`/api/application-deployments/${id}`, { method: "DELETE" }),
+
+  /* --------------------------- Application Logs --------------------------- */
+
+  listApplicationLogs: (applicationId: number) =>
+    apiFetch<ApplicationLogList>(`/api/application-logs/${applicationId}/list`),
+
+  getApplicationLogChunk: (
+    applicationId: number,
+    date: string,
+    chunk: string,
+  ) =>
+    apiFetch<ApplicationLogChunkContent>(
+      `/api/application-logs/${applicationId}?date=${encodeURIComponent(date)}&chunk=${encodeURIComponent(chunk)}`,
+    ),
 }

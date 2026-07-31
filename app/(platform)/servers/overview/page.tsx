@@ -6,7 +6,9 @@ import { LayoutGrid, Network, Plus, Search } from "lucide-react"
 
 import { PageHeader } from "@/components/platform/page-header"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
+import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
 import { ServerTopologyFlow } from "@/components/platform/server-topology-flow"
+import { ServersResourceOverview } from "@/components/platform/servers-resource-overview"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -17,9 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { buildServerTopology } from "@/lib/platform/server-topology-layout"
 import { tmsApi } from "@/lib/platform/api-service"
 import type { Application, Server } from "@/lib/platform/types"
+import { cn } from "@/lib/utils"
+
+type OverviewView = "graph" | "grid"
 
 export default function ServersOverviewPage() {
   const [loading, setLoading] = React.useState(true)
@@ -28,6 +34,8 @@ export default function ServersOverviewPage() {
   const [applications, setApplications] = React.useState<Application[]>([])
   const [serverFilter, setServerFilter] = React.useState("all")
   const [query, setQuery] = React.useState("")
+  const [view, setView] = React.useState<OverviewView>("graph")
+  const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
     let cancelled = false
@@ -52,7 +60,7 @@ export default function ServersOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshCounter])
 
   const filteredServers = React.useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -98,6 +106,12 @@ export default function ServersOverviewPage() {
         <PageHeader
           title="Servers overview"
           description="Visual map of servers and connected applications"
+          actions={
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          }
         />
         <ApiUnavailable error={error} />
       </div>
@@ -123,6 +137,10 @@ export default function ServersOverviewPage() {
               <Plus className="size-4" />
               Create Server
             </Button>
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
           </div>
         }
       />
@@ -153,23 +171,79 @@ export default function ServersOverviewPage() {
       </div>
 
       <div className="text-muted-foreground mb-3 flex flex-wrap items-center gap-2 text-sm">
-        <Network className="size-4" />
+        {view === "graph" ? <Network className="size-4" /> : <LayoutGrid className="size-4" />}
         <span>
-          {filteredServers.length} server{filteredServers.length === 1 ? "" : "s"} · {totalAppsOnView}{" "}
-          application{totalAppsOnView === 1 ? "" : "s"} on canvas
+          {filteredServers.length} server{filteredServers.length === 1 ? "" : "s"}
+          {view === "graph"
+            ? ` · ${totalAppsOnView} application${totalAppsOnView === 1 ? "" : "s"} on canvas`
+            : " · resource usage"}
         </span>
       </div>
 
-      {loading ? (
-        <Skeleton className="h-[min(70vh,640px)] w-full rounded-xl" />
-      ) : (
-        <ServerTopologyFlow nodes={nodes} edges={edges} />
-      )}
+      <Tabs
+        value={view}
+        onValueChange={(value) => setView(value as OverviewView)}
+        className="gap-4"
+      >
+        <TabsList
+          variant="line"
+          className="h-auto w-full justify-start gap-0 rounded-none border-b bg-transparent p-0"
+        >
+          <TabsTrigger
+            value="graph"
+            className={cn(
+              "text-muted-foreground h-10 flex-none rounded-none border-0 px-4 py-2 text-sm font-medium shadow-none",
+              "data-active:text-primary data-active:bg-transparent dark:data-active:bg-transparent",
+              "after:bg-primary group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+            )}
+          >
+            <Network className="size-4" />
+            Graph
+          </TabsTrigger>
+          <TabsTrigger
+            value="grid"
+            className={cn(
+              "text-muted-foreground h-10 flex-none rounded-none border-0 px-4 py-2 text-sm font-medium shadow-none",
+              "data-active:text-primary data-active:bg-transparent dark:data-active:bg-transparent",
+              "after:bg-primary group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+            )}
+          >
+            <LayoutGrid className="size-4" />
+            Grid
+          </TabsTrigger>
+        </TabsList>
 
-      <p className="text-muted-foreground mt-3 text-xs">
-        Each application node connects to its host server. Drag nodes to rearrange; use controls to
-        zoom and pan.
-      </p>
+        <TabsContent value="graph" className="mt-1">
+          {loading ? (
+            <Skeleton className="h-[min(70vh,640px)] w-full rounded-xl" />
+          ) : (
+            <ServerTopologyFlow nodes={nodes} edges={edges} />
+          )}
+          <p className="text-muted-foreground mt-3 text-xs">
+            Each application node connects to its host server. Drag nodes to rearrange; use controls
+            to zoom and pan.
+          </p>
+        </TabsContent>
+
+        <TabsContent value="grid" className="mt-1">
+          {loading ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {filteredServers.map((server) => (
+                <Skeleton key={server.id} className="h-44 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : filteredServers.length === 0 ? (
+            <div className="text-muted-foreground flex h-40 items-center justify-center rounded-xl border border-dashed text-sm">
+              No servers to display.
+            </div>
+          ) : (
+            <ServersResourceOverview
+              servers={filteredServers}
+              refreshKey={refreshCounter}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

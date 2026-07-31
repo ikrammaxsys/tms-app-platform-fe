@@ -36,6 +36,39 @@ export interface UptimeTimeline {
   points: UptimeTimelinePoint[]
 }
 
+export interface HostResourceSnapshot {
+  totalBytes: number
+  usedBytes: number
+  availableBytes: number
+  usagePercent: number
+}
+
+export interface HostMetricsTimelinePoint extends UptimeTimelinePoint {
+  avgCpuUsage: number | null
+  ram: HostResourceSnapshot | null
+  disk: HostResourceSnapshot | null
+}
+
+export interface HostMetricsTimeline {
+  serverId: number
+  isOnline: boolean
+  currentStatus: string
+  lastChecked: string
+  currentCpuUsage: number
+  currentRam: HostResourceSnapshot
+  currentDisk: HostResourceSnapshot
+  days: number
+  granularity: string
+  from: string
+  to: string
+  uptimePercent: number
+  totalChecks: number
+  upCount: number
+  degradedCount: number
+  downCount: number
+  points: HostMetricsTimelinePoint[]
+}
+
 /** Matches ApiResponse<T> from tms-template-net8. */
 export interface ApiResponse<T> {
   success: boolean
@@ -160,4 +193,46 @@ export interface ApplicationDeploymentUpsert {
   commitNo: string
   version: string
   timestamp: string
+}
+
+/** Matches ApplicationLogChunkItem from the .NET API. */
+export interface ApplicationLogChunk {
+  id: number
+  name: string
+  path: string
+  size: string
+  remoteName: string
+}
+
+/** Matches ApplicationLogDateItem from the .NET API. */
+export interface ApplicationLogDate {
+  applicationLogId: number
+  date: string
+  remoteBasePath: string
+  chunks: ApplicationLogChunk[]
+}
+
+/** Matches ApplicationLogListResponse from the .NET API. */
+export interface ApplicationLogList {
+  applicationId: number
+  appUid: string
+  applicationName: string
+  dates: ApplicationLogDate[]
+}
+
+export interface ApplicationLogEntry {
+  date: string
+  label: string
+  content: string
+}
+
+/** Matches ApplicationLogChunkResponse from the .NET API. */
+export interface ApplicationLogChunkContent {
+  chunkId: number
+  chunkName: string
+  path: string
+  size: string
+  hasNext: boolean
+  nextChunk: string | null
+  logJson: ApplicationLogEntry[]
 }

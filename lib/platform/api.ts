@@ -1,7 +1,7 @@
 import type { ApiResponse } from "./types"
 
-const DEFAULT_BASE = "http://13.229.238.4:5128"
-
+// const DEFAULT_BASE = "http://13.229.238.4:5128"
+const DEFAULT_BASE = "http://localhost:5128"
 /**
  * Server: talk directly to the .NET API.
  * Browser: use the Next.js rewrite `/backend-api/*` → TMS_API_BASE_URL

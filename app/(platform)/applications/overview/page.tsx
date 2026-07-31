@@ -7,6 +7,7 @@ import { LayoutGrid, Plus, Search } from "lucide-react"
 import { ApplicationCards } from "@/components/platform/application-cards"
 import { PageHeader } from "@/components/platform/page-header"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
+import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -28,6 +29,7 @@ export default function ApplicationOverviewPage() {
   const [query, setQuery] = React.useState("")
   const [serverFilter, setServerFilter] = React.useState("all")
   const [environmentFilter, setEnvironmentFilter] = React.useState("all")
+  const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
     let cancelled = false
@@ -70,7 +72,7 @@ export default function ApplicationOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshCounter])
 
   const filteredApplications = React.useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -90,6 +92,12 @@ export default function ApplicationOverviewPage() {
         <PageHeader
           title="Applications overview"
           description="Live application health and 7-day uptime at a glance"
+          actions={
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          }
         />
         <ApiUnavailable error={error} />
       </div>
@@ -115,6 +123,10 @@ export default function ApplicationOverviewPage() {
               <Plus className="size-4" />
               Create Application
             </Button>
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
           </div>
         }
       />

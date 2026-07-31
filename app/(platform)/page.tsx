@@ -7,6 +7,7 @@ import { Activity, Bell, Boxes, Server } from "lucide-react"
 import { PageHeader } from "@/components/platform/page-header"
 import { ApplicationsTable } from "@/components/platform/applications-table"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
+import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
 import { StatusDot } from "@/components/platform/status"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -57,6 +58,7 @@ export default function OverviewPage() {
   const [apps, setApps] = React.useState<ApplicationView[]>([])
   const [servers, setServers] = React.useState<ServerType[]>([])
   const [fetchedAt, setFetchedAt] = React.useState<string>("")
+  const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
     let cancelled = false
@@ -89,7 +91,7 @@ export default function OverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshCounter])
 
   if (error) {
     return (
@@ -97,6 +99,12 @@ export default function OverviewPage() {
         <PageHeader
           title="Overview"
           description="Central overview of applications, servers, health, and operations"
+          actions={
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          }
         />
         <ApiUnavailable error={error} />
       </div>
@@ -131,9 +139,15 @@ export default function OverviewPage() {
         title="Overview"
         description="Central overview of applications, servers, health, and operations"
         actions={
-          <span className="text-muted-foreground text-sm">
-            {loading ? "Loading…" : `Last updated: ${formatDateTime(fetchedAt)}`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-sm">
+              {loading ? "Loading…" : `Last updated: ${formatDateTime(fetchedAt)}`}
+            </span>
+            <OverviewRefreshButton
+              onRefresh={() => setRefreshCounter((count) => count + 1)}
+              refreshing={loading}
+            />
+          </div>
         }
       />
 

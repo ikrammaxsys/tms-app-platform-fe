@@ -1,5 +1,6 @@
 import { ApiError } from "./api"
 import { tmsApi } from "./api-service"
+import { formatBytes } from "./format"
 import {
   availabilityDays,
   averageLatency,
@@ -13,6 +14,8 @@ import type {
   ApplicationView,
   AvailabilityDay,
   DayStatus,
+  HostMetricsTimeline,
+  HostResourceSnapshot,
   SelectOption,
   Server,
   ServerUpsert,
@@ -64,6 +67,161 @@ export async function updateServerApi(id: number, body: ServerUpsert): Promise<b
 
 export async function deleteServerApi(id: number): Promise<boolean> {
   return tmsApi.deleteServer(id)
+}
+
+export interface ServerResourceMetrics {
+  totalBytes: number
+  usedBytes: number
+  availableBytes: number
+  usagePercent: number
+  total: string
+  used: string
+  available: string
+  summary: string
+}
+
+export interface ServerDetail {
+  server: Server
+  applications: ApplicationView[]
+  metrics: {
+    status: "Operational" | "Degraded" | "Down" | "Unknown"
+    cpu: string
+    memory: string
+    disk: string
+    ram: ServerResourceMetrics | null
+    diskUsage: ServerResourceMetrics | null
+    availability: string
+    availabilityPercent: number
+    lastChecked: string | null
+    cpuSparkline: (number | null)[]
+    memorySparkline: (number | null)[]
+    diskSparkline: (number | null)[]
+    timelineLabels: string[]
+    availabilityDays: AvailabilityDay[]
+    timelineDays: number
+  }
+}
+
+const HOST_TIMELINE_DAYS = 30
+
+export const SERVER_TIMELINE_DAY_OPTIONS = [1, 7, 30] as const
+export type ServerTimelineDays = (typeof SERVER_TIMELINE_DAY_OPTIONS)[number]
+export const DEFAULT_SERVER_TIMELINE_DAYS: ServerTimelineDays = 30
+
+export function parseServerTimelineDays(value: string | undefined): ServerTimelineDays {
+  const parsed = Number(value)
+  if (SERVER_TIMELINE_DAY_OPTIONS.includes(parsed as ServerTimelineDays)) {
+    return parsed as ServerTimelineDays
+  }
+  return DEFAULT_SERVER_TIMELINE_DAYS
+}
+
+function formatPercent(value: number | null | undefined, decimals = 2): string {
+  if (value === null || value === undefined) return "—"
+  return `${value.toFixed(decimals)}%`
+}
+
+function toResourceMetrics(
+  snapshot: HostResourceSnapshot | null | undefined,
+): ServerResourceMetrics | null {
+  if (!snapshot) return null
+  const { totalBytes, usedBytes, availableBytes, usagePercent } = snapshot
+  const total = formatBytes(totalBytes)
+  const used = formatBytes(usedBytes)
+  const available = formatBytes(availableBytes)
+  return {
+    totalBytes,
+    usedBytes,
+    availableBytes,
+    usagePercent,
+    total,
+    used,
+    available,
+    summary: `${used} / ${total} (${usagePercent.toFixed(2)}%)`,
+  }
+}
+
+function hostStatusToAppStatus(
+  currentStatus: string,
+): "Operational" | "Degraded" | "Down" | "Unknown" {
+  if (currentStatus === "Up") return "Operational"
+  if (currentStatus === "Degraded") return "Degraded"
+  if (currentStatus === "Down") return "Down"
+  return "Unknown"
+}
+
+export async function getServerHostTimeline(
+  serverId: number,
+  days = HOST_TIMELINE_DAYS,
+): Promise<HostMetricsTimeline | undefined> {
+  try {
+    return await tmsApi.getServerHostTimeline(serverId, days)
+  } catch {
+    return undefined
+  }
+}
+
+export async function getServerDetail(
+  id: number,
+  days: ServerTimelineDays = DEFAULT_SERVER_TIMELINE_DAYS,
+): Promise<ServerDetail | undefined> {
+  const server = await getServerById(id)
+  if (!server) return undefined
+
+  const applications = (await getApplications()).filter((a) => a.serverId === id)
+  const hostTimeline = await getServerHostTimeline(id, days)
+
+  if (!hostTimeline) {
+    return {
+      server,
+      applications,
+      metrics: {
+        status: "Unknown",
+        cpu: "—",
+        memory: "—",
+        disk: "—",
+        ram: null,
+        diskUsage: null,
+        availability: "No data",
+        availabilityPercent: 0,
+        lastChecked: null,
+        cpuSparkline: [],
+        memorySparkline: [],
+        diskSparkline: [],
+        timelineLabels: [],
+        availabilityDays: [],
+        timelineDays: days,
+      },
+    }
+  }
+
+  const ram = toResourceMetrics(hostTimeline.currentRam)
+  const diskUsage = toResourceMetrics(hostTimeline.currentDisk)
+
+  return {
+    server,
+    applications,
+    metrics: {
+      status: hostStatusToAppStatus(hostTimeline.currentStatus),
+      cpu: formatPercent(hostTimeline.currentCpuUsage),
+      memory: ram?.summary ?? "—",
+      disk: diskUsage?.summary ?? "—",
+      ram,
+      diskUsage,
+      availability:
+        hostTimeline.totalChecks === 0
+          ? "No data"
+          : `${hostTimeline.uptimePercent.toFixed(2)}%`,
+      availabilityPercent: hostTimeline.uptimePercent,
+      lastChecked: hostTimeline.lastChecked,
+      cpuSparkline: hostTimeline.points.map((p) => p.avgCpuUsage),
+      memorySparkline: hostTimeline.points.map((p) => p.ram?.usagePercent ?? null),
+      diskSparkline: hostTimeline.points.map((p) => p.disk?.usagePercent ?? null),
+      timelineLabels: hostTimeline.points.map((p) => p.label),
+      availabilityDays: hostTimeline.points.map(availabilityDayFromUptimePoint),
+      timelineDays: hostTimeline.days,
+    },
+  }
 }
 
 /* --------------------------- Application Groups ------------------------- */
@@ -482,6 +640,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         description: "Agent to monitor application performance and latency in background.",
         tag: "Monitoring",
       },
+      {
+        title: "Server Monitoring",
+        description: "Monitor server metrics and uptime.",
+        tag: "Monitoring",
+      }
     ],
     shipped: [],
   }

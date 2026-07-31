@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/platform/page-header"
+import { PageRefreshButton } from "@/components/platform/page-refresh-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { getRoadmap, type RoadmapItem } from "@/lib/platform/queries"
@@ -56,10 +57,13 @@ export default async function RoadmapPage() {
         title="Roadmap"
         description="TMS Dev Platform features — ideas, work in progress, and what has shipped"
         actions={
-          <span className="text-muted-foreground text-sm">
-            {roadmap.ideas.length} Ideas · {roadmap.inProgress.length} In Progress ·{" "}
-            {roadmap.shipped.length} Shipped
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-sm">
+              {roadmap.ideas.length} Ideas · {roadmap.inProgress.length} In Progress ·{" "}
+              {roadmap.shipped.length} Shipped
+            </span>
+            <PageRefreshButton />
+          </div>
         }
       />
       <div className="grid gap-5 md:grid-cols-3">

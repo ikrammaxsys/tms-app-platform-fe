@@ -3,13 +3,14 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { EnvironmentBadge } from "@/components/platform/status"
 import { DeleteButton } from "@/components/platform/delete-button"
-import { ApplicationsTable } from "@/components/platform/applications-table"
+import { PageRefreshButton } from "@/components/platform/page-refresh-button"
+import { ServerDetailTabs } from "@/components/platform/server-detail-tabs"
 import { deleteServer } from "@/lib/platform/actions"
-import { getApplications, getServerById } from "@/lib/platform/queries"
+import { getServerDetail, parseServerTimelineDays } from "@/lib/platform/queries"
 import type { Environment } from "@/lib/platform/types"
 
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
@@ -25,15 +26,19 @@ function Meta({ label, children }: { label: string; children: React.ReactNode })
 
 export default async function ServerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ days?: string }>
 }) {
   const { id } = await params
+  const { days: daysParam } = await searchParams
   const serverId = Number(id)
-  const server = await getServerById(serverId)
-  if (!server) notFound()
+  const days = parseServerTimelineDays(daysParam)
+  const detail = await getServerDetail(serverId, days)
+  if (!detail) notFound()
 
-  const applications = (await getApplications()).filter((a) => a.serverId === serverId)
+  const { server } = detail
 
   return (
     <div>
@@ -59,6 +64,7 @@ export default async function ServerDetailPage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <PageRefreshButton />
               <Button
                 variant="outline"
                 size="sm"
@@ -90,14 +96,7 @@ export default async function ServerDetailPage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Applications on this server</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ApplicationsTable applications={applications} withActions />
-        </CardContent>
-      </Card>
+      <ServerDetailTabs detail={detail} serverId={serverId} selectedDays={days} />
     </div>
   )
 }

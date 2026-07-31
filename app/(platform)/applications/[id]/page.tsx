@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { AppAvatar, StatusLabel } from "@/components/platform/status"
 import { DeleteButton } from "@/components/platform/delete-button"
+import { PageRefreshButton } from "@/components/platform/page-refresh-button"
 import { ApplicationDetailTabs } from "@/components/platform/application-detail-tabs"
 import { deleteApplication } from "@/lib/platform/actions"
 import { getApplicationDetail } from "@/lib/platform/queries"
@@ -75,6 +76,7 @@ export default async function ApplicationDetailPage({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
+              <PageRefreshButton />
               <Button
                 variant="outline"
                 size="sm"

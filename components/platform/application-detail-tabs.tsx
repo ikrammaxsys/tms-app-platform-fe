@@ -21,6 +21,7 @@ import {
   Sparkline,
 } from "@/components/platform/metrics"
 import { EnvironmentBadge, StatusLabel } from "@/components/platform/status"
+import { ApplicationLogsPanel } from "@/components/platform/application-logs-panel"
 import { DeploymentsPanel } from "@/components/platform/deployments-panel"
 import { tmsApi } from "@/lib/platform/api-service"
 import { formatDateTime } from "@/lib/platform/format"
@@ -32,17 +33,8 @@ const TABS = [
   { value: "overview", label: "Overview", available: true },
   { value: "servers", label: "Servers", available: true },
   { value: "deployments", label: "Deployments", available: true },
-  { value: "logs", label: "Logs", available: false },
+  { value: "logs", label: "Logs", available: true },
 ] as const
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-muted/50 rounded-lg p-3">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-1 text-lg font-bold">{value}</p>
-    </div>
-  )
-}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -50,20 +42,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-semibold">{children}</dd>
     </div>
-  )
-}
-
-function ComingSoon({ title, description }: { title: string; description: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm font-medium">Not available yet.</p>
-        <p className="text-muted-foreground mt-1 text-sm">{description}</p>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -342,9 +320,9 @@ export function ApplicationDetailTabs({ detail }: { detail: ApplicationDetail })
       </TabsContent>
 
       <TabsContent value="logs" className="mt-1">
-        <ComingSoon
-          title="Logs"
-          description="Integrated application logs will be added later."
+        <ApplicationLogsPanel
+          applicationId={detail.app.id}
+          applicationName={detail.app.name}
         />
       </TabsContent>
     </Tabs>

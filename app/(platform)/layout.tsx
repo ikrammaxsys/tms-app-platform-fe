@@ -20,7 +20,7 @@ export default function PlatformLayout({
         <header className="bg-background/80 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 !h-4" />
-          <span className="font-bold text-lg">TMS App Platform</span>
+          <span className="font-bold text-lg">Toray App Platform</span>
           <div className="ml-auto flex items-center gap-2">
             <NavbarClock />
             <ThemeToggle />
