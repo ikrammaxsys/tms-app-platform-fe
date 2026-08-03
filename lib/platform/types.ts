@@ -226,6 +226,72 @@ export interface ApplicationLogEntry {
   content: string
 }
 
+export type AgentStatus = "pending" | "installed" | "ready" | "offline" | "disconnected"
+
+/** Agent row from GET /api/agents/list (flat array, no wrapper). */
+export interface AgentListItem {
+  id: number
+  uid: string
+  name: string
+  serverId: number
+  serverDomain: string
+  serverEnvironment: string
+  status: string
+  lastReadyAt: string | null
+  createdAt: string
+}
+
+/** Agent from GET/POST /api/agents/{id}. */
+export interface AgentApi {
+  id: number
+  uid: string
+  name: string
+  serverId: number
+  authToken: string
+  status: string
+  lastReadyAt: string | null
+  createdAt: string
+  serverDomain: string
+  serverEnvironment: string
+}
+
+export interface AgentUpsertRequest {
+  name: string
+  uid?: string
+  serverId: number
+  authToken?: string
+}
+
+/** Readiness status from GET /api/agents/{agentUid}/ready. */
+export interface AgentReadyStatus {
+  agentUid: string
+  name: string
+  status: string
+  lastReadyAt: string | null
+  serverDomain: string
+}
+
+/** Platform monitoring agent — UI view model. */
+export interface Agent {
+  id: number
+  uid: string
+  name: string
+  serverId: number
+  serverDomain: string
+  token: string
+  status: AgentStatus
+  createdAt: string
+  lastSeenAt: string | null
+  connectionMessage: string | null
+}
+
+export interface AgentUpsert {
+  name: string
+  serverId: number
+  uid?: string
+  authToken?: string
+}
+
 /** Matches ApplicationLogChunkResponse from the .NET API. */
 export interface ApplicationLogChunkContent {
   chunkId: number

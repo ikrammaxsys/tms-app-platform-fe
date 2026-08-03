@@ -12,6 +12,10 @@ import type {
   ApplicationLogChunkContent,
   ApplicationLogList,
   ApplicationUpsert,
+  AgentApi,
+  AgentListItem,
+  AgentReadyStatus,
+  AgentUpsertRequest,
   SelectOption,
   Server,
   ServerUpsert,
@@ -127,4 +131,22 @@ export const tmsApi = {
     apiFetch<ApplicationLogChunkContent>(
       `/api/application-logs/${applicationId}?date=${encodeURIComponent(date)}&chunk=${encodeURIComponent(chunk)}`,
     ),
+
+  /* --------------------------------- Agents --------------------------------- */
+
+  listAgents: () => apiFetch<AgentListItem[]>("/api/agents/list"),
+
+  getAgent: (id: number) => apiFetch<AgentApi>(`/api/agents/${id}`),
+
+  createAgent: (body: AgentUpsertRequest) =>
+    apiFetch<AgentApi>("/api/agents", { method: "POST", body }),
+
+  updateAgent: (id: number, body: AgentUpsertRequest) =>
+    apiFetch<boolean>(`/api/agents/${id}`, { method: "PUT", body }),
+
+  deleteAgent: (id: number) =>
+    apiFetch<boolean>(`/api/agents/${id}`, { method: "DELETE" }),
+
+  getAgentReady: (agentUid: string) =>
+    apiFetch<AgentReadyStatus>(`/api/agents/${encodeURIComponent(agentUid)}/ready`),
 }

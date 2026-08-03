@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { FileText, Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, FileText, Search } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,8 +11,7 @@ import { tmsApi } from "@/lib/platform/api-service"
 import type { ApplicationLogDate, ApplicationLogEntry } from "@/lib/platform/types"
 import { cn } from "@/lib/utils"
 
-const CHUNK_BATCH_SIZE = 10
-const SCROLL_THRESHOLD_PX = 48
+const PAGE_SIZE = 500
 
 const LABEL_STYLES: Record<string, string> = {
   information: "text-sky-400",
@@ -41,37 +41,26 @@ function chunkQueryValue(date: string, chunk: ApplicationLogDate["chunks"][numbe
   return chunk.path.replace(/^\//, "")
 }
 
-async function fetchLogChunkBatch(
+async function fetchAllLogEntries(
   applicationId: number,
   date: string,
   startChunk: string,
-  maxChunks: number,
-): Promise<{
-  entries: ApplicationLogEntry[]
-  nextChunk: string | null
-  hasMore: boolean
-}> {
+): Promise<ApplicationLogEntry[]> {
   let chunkParam: string | null = startChunk
   const entries: ApplicationLogEntry[] = []
-  let chunksLoaded = 0
 
-  while (chunkParam && chunksLoaded < maxChunks) {
+  while (chunkParam) {
     const response = await tmsApi.getApplicationLogChunk(applicationId, date, chunkParam)
     entries.push(...response.logJson)
-    chunksLoaded++
 
     if (!response.hasNext || !response.nextChunk) {
-      return { entries, nextChunk: null, hasMore: false }
+      break
     }
 
     chunkParam = response.nextChunk
   }
 
-  return {
-    entries,
-    nextChunk: chunkParam,
-    hasMore: chunkParam !== null,
-  }
+  return entries
 }
 
 export function ApplicationLogsPanel({
@@ -82,23 +71,16 @@ export function ApplicationLogsPanel({
   applicationName: string
 }) {
   const viewerRef = React.useRef<HTMLDivElement>(null)
-  const loadingMoreRef = React.useRef(false)
 
   const [logDays, setLogDays] = React.useState<ApplicationLogDate[]>([])
   const [listLoading, setListLoading] = React.useState(true)
   const [listError, setListError] = React.useState<string | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null)
   const [entries, setEntries] = React.useState<ApplicationLogEntry[]>([])
-  const [nextChunk, setNextChunk] = React.useState<string | null>(null)
-  const [hasMore, setHasMore] = React.useState(false)
+  const [pageIndex, setPageIndex] = React.useState(0)
   const [logsLoading, setLogsLoading] = React.useState(false)
-  const [loadingMore, setLoadingMore] = React.useState(false)
   const [logsError, setLogsError] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState("")
-
-  React.useEffect(() => {
-    loadingMoreRef.current = loadingMore
-  }, [loadingMore])
 
   React.useEffect(() => {
     let cancelled = false
@@ -126,47 +108,17 @@ export function ApplicationLogsPanel({
     }
   }, [applicationId])
 
-  const loadMoreChunks = React.useCallback(
-    async (date: string, chunk: string) => {
-      if (loadingMoreRef.current) return
-
-      setLoadingMore(true)
-      loadingMoreRef.current = true
-      setLogsError(null)
-
-      try {
-        const result = await fetchLogChunkBatch(
-          applicationId,
-          date,
-          chunk,
-          CHUNK_BATCH_SIZE,
-        )
-        setEntries((current) => [...current, ...result.entries])
-        setNextChunk(result.nextChunk)
-        setHasMore(result.hasMore)
-      } catch (err) {
-        setLogsError(err instanceof Error ? err.message : "Failed to load more logs")
-      } finally {
-        setLoadingMore(false)
-        loadingMoreRef.current = false
-      }
-    },
-    [applicationId],
-  )
-
   React.useEffect(() => {
     if (!selectedDate) {
       setEntries([])
-      setNextChunk(null)
-      setHasMore(false)
+      setPageIndex(0)
       return
     }
 
     const day = logDays.find((item) => item.date === selectedDate)
     if (!day || day.chunks.length === 0) {
       setEntries([])
-      setNextChunk(null)
-      setHasMore(false)
+      setPageIndex(0)
       return
     }
 
@@ -174,25 +126,18 @@ export function ApplicationLogsPanel({
     const date = selectedDate
     const firstChunk = chunkQueryValue(date, day.chunks[0])
 
-    async function loadInitial() {
+    async function loadLogs() {
       setLogsLoading(true)
       setLogsError(null)
       setEntries([])
-      setNextChunk(null)
-      setHasMore(false)
+      setPageIndex(0)
       viewerRef.current?.scrollTo({ top: 0 })
 
       try {
-        const result = await fetchLogChunkBatch(
-          applicationId,
-          date,
-          firstChunk,
-          CHUNK_BATCH_SIZE,
-        )
+        const result = await fetchAllLogEntries(applicationId, date, firstChunk)
         if (cancelled) return
-        setEntries(result.entries)
-        setNextChunk(result.nextChunk)
-        setHasMore(result.hasMore)
+        setEntries(result)
+        setPageIndex(0)
       } catch (err) {
         if (!cancelled) {
           setLogsError(err instanceof Error ? err.message : "Failed to load logs")
@@ -202,46 +147,12 @@ export function ApplicationLogsPanel({
       }
     }
 
-    void loadInitial()
+    void loadLogs()
     return () => {
       cancelled = true
     }
   }, [applicationId, selectedDate, logDays])
 
-  const handleViewerScroll = React.useCallback(() => {
-    const viewer = viewerRef.current
-    if (!viewer || logsLoading || loadingMoreRef.current || !hasMore || !nextChunk || !selectedDate) {
-      return
-    }
-
-    const atBottom =
-      viewer.scrollTop + viewer.clientHeight >= viewer.scrollHeight - SCROLL_THRESHOLD_PX
-
-    if (atBottom) {
-      void loadMoreChunks(selectedDate, nextChunk)
-    }
-  }, [hasMore, loadMoreChunks, logsLoading, nextChunk, selectedDate])
-
-  React.useEffect(() => {
-    const viewer = viewerRef.current
-    if (
-      !viewer ||
-      logsLoading ||
-      loadingMore ||
-      !hasMore ||
-      !nextChunk ||
-      !selectedDate
-    ) {
-      return
-    }
-
-    const needsMore = viewer.scrollHeight <= viewer.clientHeight + SCROLL_THRESHOLD_PX
-    if (needsMore) {
-      void loadMoreChunks(selectedDate, nextChunk)
-    }
-  }, [entries, hasMore, loadMoreChunks, loadingMore, logsLoading, nextChunk, selectedDate])
-
-  const selectedDay = logDays.find((day) => day.date === selectedDate)
   const filteredEntries = React.useMemo(() => {
     const query = search.trim().toLowerCase()
     if (!query) return entries
@@ -252,6 +163,45 @@ export function ApplicationLogsPanel({
         entry.date.toLowerCase().includes(query),
     )
   }, [entries, search])
+
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE))
+  const safePageIndex = Math.min(pageIndex, totalPages - 1)
+
+  React.useEffect(() => {
+    setPageIndex(0)
+    viewerRef.current?.scrollTo({ top: 0 })
+  }, [search])
+
+  React.useEffect(() => {
+    if (pageIndex > totalPages - 1) {
+      setPageIndex(Math.max(0, totalPages - 1))
+    }
+  }, [pageIndex, totalPages])
+
+  const pageEntries = React.useMemo(() => {
+    const start = safePageIndex * PAGE_SIZE
+    return filteredEntries.slice(start, start + PAGE_SIZE)
+  }, [filteredEntries, safePageIndex])
+
+  const hasPrev = safePageIndex > 0
+  const hasNext = safePageIndex < totalPages - 1
+  const rangeStart =
+    filteredEntries.length === 0 ? 0 : safePageIndex * PAGE_SIZE + 1
+  const rangeEnd = Math.min((safePageIndex + 1) * PAGE_SIZE, filteredEntries.length)
+
+  const goToPrevPage = React.useCallback(() => {
+    if (!hasPrev || logsLoading) return
+    setPageIndex((index) => Math.max(0, index - 1))
+    viewerRef.current?.scrollTo({ top: 0 })
+  }, [hasPrev, logsLoading])
+
+  const goToNextPage = React.useCallback(() => {
+    if (!hasNext || logsLoading) return
+    setPageIndex((index) => Math.min(totalPages - 1, index + 1))
+    viewerRef.current?.scrollTo({ top: 0 })
+  }, [hasNext, logsLoading, totalPages])
+
+  const selectedDay = logDays.find((day) => day.date === selectedDate)
 
   return (
     <Card className="overflow-hidden py-0">
@@ -312,7 +262,9 @@ export function ApplicationLogsPanel({
                 {logsLoading
                   ? "Loading…"
                   : `${filteredEntries.length.toLocaleString()} lines`}
-                {!logsLoading && hasMore ? " · scroll for more" : ""}
+                {!logsLoading && filteredEntries.length > 0
+                  ? ` · Page ${safePageIndex + 1} of ${totalPages}`
+                  : ""}
               </p>
             </div>
             <div className="relative w-full max-w-xs">
@@ -329,7 +281,6 @@ export function ApplicationLogsPanel({
 
           <div
             ref={viewerRef}
-            onScroll={handleViewerScroll}
             className="bg-zinc-950 flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed text-zinc-100"
           >
             {logsLoading ? (
@@ -342,7 +293,7 @@ export function ApplicationLogsPanel({
               <div className="text-destructive flex h-full flex-col items-center justify-center gap-2 py-16">
                 <p>{logsError}</p>
               </div>
-            ) : filteredEntries.length === 0 ? (
+            ) : pageEntries.length === 0 ? (
               <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 py-16">
                 <FileText className="size-8 opacity-40" />
                 <p>
@@ -353,8 +304,8 @@ export function ApplicationLogsPanel({
               </div>
             ) : (
               <div className="space-y-1">
-                {filteredEntries.map((entry, index) => (
-                  <div key={`${entry.date}-${index}`} className="flex gap-3">
+                {pageEntries.map((entry, index) => (
+                  <div key={`${entry.date}-${safePageIndex}-${index}`} className="flex gap-3">
                     <span className="text-zinc-500 shrink-0">{entry.date}</span>
                     <span
                       className={cn(
@@ -367,11 +318,40 @@ export function ApplicationLogsPanel({
                     <span className="min-w-0 break-all">{entry.content}</span>
                   </div>
                 ))}
-                {loadingMore ? (
-                  <p className="text-zinc-500 py-3 text-center">Loading more…</p>
-                ) : null}
               </div>
             )}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t px-4 py-2.5">
+            <p className="text-muted-foreground text-xs">
+              {logsLoading
+                ? "Loading logs…"
+                : filteredEntries.length === 0
+                  ? "No pages"
+                  : `Showing ${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} of ${filteredEntries.length.toLocaleString()} · Page ${safePageIndex + 1} of ${totalPages}`}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={goToPrevPage}
+                disabled={!hasPrev || logsLoading}
+              >
+                <ChevronLeft />
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={!hasNext || logsLoading}
+              >
+                Next
+                <ChevronRight />
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

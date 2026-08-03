@@ -23,6 +23,7 @@ import {
 import { EnvironmentBadge, StatusLabel } from "@/components/platform/status"
 import { ApplicationLogsPanel } from "@/components/platform/application-logs-panel"
 import { DeploymentsPanel } from "@/components/platform/deployments-panel"
+import { EntityAgentConfigSection } from "@/components/platform/entity-agent-config-section"
 import { tmsApi } from "@/lib/platform/api-service"
 import { formatDateTime } from "@/lib/platform/format"
 import type { ApplicationDetail } from "@/lib/platform/queries"
@@ -34,6 +35,7 @@ const TABS = [
   { value: "servers", label: "Servers", available: true },
   { value: "deployments", label: "Deployments", available: true },
   { value: "logs", label: "Logs", available: true },
+  { value: "configuration", label: "Configuration", available: true },
 ] as const
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -324,6 +326,10 @@ export function ApplicationDetailTabs({ detail }: { detail: ApplicationDetail })
           applicationId={detail.app.id}
           applicationName={detail.app.name}
         />
+      </TabsContent>
+
+      <TabsContent value="configuration" className="mt-1">
+        <EntityAgentConfigSection entityLabel="application" entityName={detail.app.name} />
       </TabsContent>
     </Tabs>
   )

@@ -13,6 +13,7 @@ import {
   Wrench,
   BarChart3,
   Network,
+  Bot,
 } from "lucide-react"
 
 import {
@@ -37,6 +38,7 @@ const MAINTENANCE_ITEMS = [
   { title: "Applications", href: "/applications", icon: AppWindow },
   { title: "Application Groups", href: "/application-groups", icon: Boxes },
   { title: "Servers", href: "/servers", icon: Server },
+  { title: "Agents", href: "/agents", icon: Bot },
   { title: "Deployments", href: "/deployments", icon: History },
 ]
 
@@ -64,7 +66,15 @@ export function AppSidebar() {
             alt="Toray"
             width={120}
             height={32}
-            className="h-8 w-auto object-contain group-data-[collapsible=icon]:h-6 m-auto"
+            className="h-8 w-auto object-contain group-data-[collapsible=icon]:h-6 m-auto dark:hidden"
+            priority
+          />
+          <Image
+            src="/img/toray-logo-white.png"
+            alt="Toray"
+            width={120}
+            height={32}
+            className="hidden h-8 w-auto object-contain group-data-[collapsible=icon]:h-6 m-auto dark:block"
             priority
           />
         </Link>

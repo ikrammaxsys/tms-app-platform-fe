@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ApplicationsTable } from "@/components/platform/applications-table"
+import { EntityAgentConfigSection } from "@/components/platform/entity-agent-config-section"
 import { ServerMetricsPanel } from "@/components/platform/server-metrics-panel"
 import { ServerTopologyFlow } from "@/components/platform/server-topology-flow"
 import { buildServerTopology } from "@/lib/platform/server-topology-layout"
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils"
 const TABS = [
   { value: "overview", label: "Overview", available: true },
   { value: "applications", label: "Applications", available: true },
+  { value: "configuration", label: "Configuration", available: true },
 ] as const
 
 type ApplicationsView = "graph" | "table"
@@ -168,6 +170,10 @@ export function ServerDetailTabs({
 
       <TabsContent value="applications" className="mt-1">
         <ApplicationsPanel server={detail.server} applications={detail.applications} />
+      </TabsContent>
+
+      <TabsContent value="configuration" className="mt-1">
+        <EntityAgentConfigSection entityLabel="server" entityName={detail.server.domain} />
       </TabsContent>
     </Tabs>
   )
