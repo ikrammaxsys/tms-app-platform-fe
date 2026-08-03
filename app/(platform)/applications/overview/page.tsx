@@ -25,7 +25,12 @@ export default function ApplicationOverviewPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<unknown>(null)
   const [applications, setApplications] = React.useState<ApplicationView[]>([])
-  const [uptimeTimelines, setUptimeTimelines] = React.useState<Record<number, UptimeTimeline | undefined>>({})
+  const [uptimeTimelines, setUptimeTimelines] = React.useState<
+    Record<number, UptimeTimeline | undefined>
+  >({})
+  const [liveUptimeTimelines, setLiveUptimeTimelines] = React.useState<
+    Record<number, UptimeTimeline | undefined>
+  >({})
   const [query, setQuery] = React.useState("")
   const [serverFilter, setServerFilter] = React.useState("all")
   const [environmentFilter, setEnvironmentFilter] = React.useState("all")
@@ -52,16 +57,20 @@ export default function ApplicationOverviewPage() {
         const timelineEntries = await Promise.all(
           applicationViews.map(async (app) => {
             try {
-              const timeline = await tmsApi.getApplicationUptimeTimeline(app.id)
-              return [app.id, timeline] as const
+              const [overviewTimeline, liveTimeline] = await Promise.all([
+                tmsApi.getApplicationUptimeTimeline(app.id, 30),
+                tmsApi.getApplicationUptimeTimeline(app.id, 1),
+              ])
+              return [app.id, overviewTimeline, liveTimeline] as const
             } catch {
-              return [app.id, undefined] as const
+              return [app.id, undefined, undefined] as const
             }
           }),
         )
 
         if (cancelled) return
-        setUptimeTimelines(Object.fromEntries(timelineEntries))
+        setUptimeTimelines(Object.fromEntries(timelineEntries.map(([id, overview]) => [id, overview])))
+        setLiveUptimeTimelines(Object.fromEntries(timelineEntries.map(([id, , live]) => [id, live])))
       } catch (err) {
         if (!cancelled) setError(err)
       } finally {
@@ -91,7 +100,7 @@ export default function ApplicationOverviewPage() {
       <div>
         <PageHeader
           title="Applications overview"
-          description="Live application health and 7-day uptime at a glance"
+          description="Live application health and 30-day uptime"
           actions={
             <OverviewRefreshButton
               onRefresh={() => setRefreshCounter((count) => count + 1)}
@@ -108,7 +117,7 @@ export default function ApplicationOverviewPage() {
     <div>
       <PageHeader
         title="Applications overview"
-        description="Live application health and 7-day uptime at a glance"
+        description="Live application health and 30-day uptime"
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -180,6 +189,7 @@ export default function ApplicationOverviewPage() {
         applications={filteredApplications}
         loading={loading}
         uptimeTimelines={uptimeTimelines}
+        liveUptimeTimelines={liveUptimeTimelines}
       />
     </div>
   )

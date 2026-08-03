@@ -13,6 +13,7 @@ import { ApplicationDetailTabs } from "@/components/platform/application-detail-
 import { deleteApplication } from "@/lib/platform/actions"
 import { getApplicationDetail } from "@/lib/platform/queries"
 import { formatDateTime } from "@/lib/platform/format"
+import { resolveApplicationLiveStatus } from "@/lib/platform/view"
 
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -35,6 +36,10 @@ export default async function ApplicationDetailPage({
   if (!detail) notFound()
 
   const { app } = detail
+  const displayStatus = resolveApplicationLiveStatus(
+    app,
+    detail.todayUptimeTimeline ?? detail.uptimeTimeline,
+  )
 
   return (
     <div>
@@ -62,7 +67,7 @@ export default async function ApplicationDetailPage({
               <div>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h1 className="text-2xl font-bold tracking-tight">{app.name}</h1>
-                  <StatusLabel status={app.status} />
+                  <StatusLabel status={displayStatus} />
                   {detail.hasVersionDrift ? (
                     <Badge variant="secondary" className="gap-1">
                       <TriangleAlert className="size-3" />

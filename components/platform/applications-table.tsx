@@ -25,16 +25,19 @@ import { AppAvatar, StatusLabel } from "@/components/platform/status"
 import { RowActions } from "@/components/platform/row-actions"
 import { formatDateTime } from "@/lib/platform/format"
 import { deleteApplication } from "@/lib/platform/actions"
-import type { ApplicationView } from "@/lib/platform/types"
+import { resolveApplicationLiveStatus } from "@/lib/platform/view"
+import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
 
 const PAGE_SIZE = 8
 
 export function ApplicationsTable({
   applications,
   withActions = false,
+  uptimeTimelines,
 }: {
   applications: ApplicationView[]
   withActions?: boolean
+  uptimeTimelines?: Record<number, UptimeTimeline | undefined>
 }) {
   const [query, setQuery] = React.useState("")
   const [status, setStatus] = React.useState("all")
@@ -49,13 +52,16 @@ export function ApplicationsTable({
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase()
     return applications.filter((a) => {
-      if (status !== "all" && a.status !== status) return false
+      if (status !== "all") {
+        const liveStatus = resolveApplicationLiveStatus(a, uptimeTimelines?.[a.id])
+        if (liveStatus !== status) return false
+      }
       if (server !== "all" && a.serverDomain !== server) return false
       if (q && !`${a.name} ${a.applicationGroupName} ${a.version}`.toLowerCase().includes(q))
         return false
       return true
     })
-  }, [applications, query, status, server])
+  }, [applications, query, status, server, uptimeTimelines])
 
   React.useEffect(() => setPage(1), [query, status, server])
 
@@ -63,7 +69,14 @@ export function ApplicationsTable({
   const current = Math.min(page, totalPages)
   const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
 
-  const statusItems = { all: "All Status", Healthy: "Healthy", Warning: "Warning", Down: "Down", Inactive: "Inactive" }
+  const statusItems = {
+    all: "All Status",
+    Operational: "Operational",
+    Degraded: "Degraded",
+    Down: "Down",
+    Unknown: "Unknown",
+    Inactive: "Inactive",
+  }
   const serverItems: Record<string, string> = { all: "All Servers" }
   servers.forEach((s) => (serverItems[s] = s))
 
@@ -178,7 +191,9 @@ export function ApplicationsTable({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <StatusLabel status={app.status} />
+                    <StatusLabel
+                      status={resolveApplicationLiveStatus(app, uptimeTimelines?.[app.id])}
+                    />
                   </TableCell>
                   <TableCell className="tabular-nums">{app.uptime}</TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">

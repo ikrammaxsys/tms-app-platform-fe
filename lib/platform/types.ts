@@ -126,6 +126,10 @@ export interface Application {
   serverIpAddress: string
   applicationGroupName: string
   isOnline?: boolean
+  healthcheckUrl?: string | null
+  isHealthcheck?: number | null
+  logsPath?: string | null
+  isScaningLogs?: number | null
   serverDetail?: {
     domain?: string
     environment?: string
@@ -147,6 +151,10 @@ export interface ApplicationUpsert {
   repositoryUrl: string
   serverId: number
   applicationGroupId: number
+  healthcheckUrl?: string | null
+  isHealthcheck?: number | null
+  logsPath?: string | null
+  isScaningLogs?: number | null
 }
 
 /** Application joined with display helpers for tables / detail. */
@@ -269,6 +277,16 @@ export interface AgentReadyStatus {
   status: string
   lastReadyAt: string | null
   serverDomain: string
+}
+
+/** Agent config from GET/PUT /api/agents/{agentUid}/config. */
+export interface AgentConfigRecord {
+  agentUid: string
+  configJson: string
+}
+
+export interface AgentConfigUpdateRequest {
+  configJson: string
 }
 
 /** Platform monitoring agent — UI view model. */

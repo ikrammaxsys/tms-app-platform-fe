@@ -15,6 +15,8 @@ import type {
   AgentApi,
   AgentListItem,
   AgentReadyStatus,
+  AgentConfigRecord,
+  AgentConfigUpdateRequest,
   AgentUpsertRequest,
   SelectOption,
   Server,
@@ -149,4 +151,13 @@ export const tmsApi = {
 
   getAgentReady: (agentUid: string) =>
     apiFetch<AgentReadyStatus>(`/api/agents/${encodeURIComponent(agentUid)}/ready`),
+
+  getAgentConfig: (agentUid: string) =>
+    apiFetch<AgentConfigRecord>(`/api/agents/${encodeURIComponent(agentUid)}/config`),
+
+  updateAgentConfig: (agentUid: string, body: AgentConfigUpdateRequest) =>
+    apiFetch<AgentConfigRecord>(`/api/agents/${encodeURIComponent(agentUid)}/config`, {
+      method: "PUT",
+      body,
+    }),
 }

@@ -409,6 +409,7 @@ export interface ApplicationDetail {
   repositoryUrl: string
   hasVersionDrift: boolean
   uptimeTimeline: UptimeTimeline | null
+  todayUptimeTimeline: UptimeTimeline | null
   availabilityDays: ReturnType<typeof availabilityDays>
   todayTimeline: AvailabilityDay[]
   /** API `to` timestamp for today's hourly timeline (used to dim future hours). */
@@ -532,6 +533,7 @@ export async function getApplicationDetail(id: number): Promise<ApplicationDetai
     repositoryUrl: app.repositoryUrl || "#",
     hasVersionDrift,
     uptimeTimeline: uptimeTimeline ?? null,
+    todayUptimeTimeline: todayUptimeTimeline ?? null,
     availabilityDays: days,
     todayTimeline,
     todayTimelineAsOf: todayUptimeTimeline?.to ?? null,
@@ -604,22 +606,29 @@ export async function getRoadmap(): Promise<RoadmapData> {
   return {
     ideas: [
       {
+        title: "New Deployment Notification",
+        description: "Send notification to team when new deployment is deployed.",
+        tag: "Notification",
+      }
+    ],
+    inProgress: [
+      {
         title: "Centralized logs viewer",
         description: "Search and filter app logs across all servers in one place.",
         tag: "Observability",
       },
       {
-        title: "New Deployment Notification",
-        description: "Send notification to team when new deployment is deployed.",
-        tag: "Notification",
-      },
-      {
         title: "Centralize agent config",
         description: "Centralize the configuration of the application monitoring agent.",
         tag: "Configuration",
-      }
+      },
+      {
+        title: "Application configuration",
+        description: "Centralize the configuration of the application for agents",
+        tag: "Configuration",
+      },
     ],
-    inProgress: [
+    shipped: [
       {
         title: "Application Monitoring",
         description: "Monitor application version and deployment status.",
@@ -637,7 +646,7 @@ export async function getRoadmap(): Promise<RoadmapData> {
       },
       {
         title: "App Platform Agent",
-        description: "Agent to monitor application performance and latency in background.",
+        description: "Agent to monitor application performance and uptime in background.",
         tag: "Monitoring",
       },
       {
@@ -646,6 +655,5 @@ export async function getRoadmap(): Promise<RoadmapData> {
         tag: "Monitoring",
       }
     ],
-    shipped: [],
   }
 }

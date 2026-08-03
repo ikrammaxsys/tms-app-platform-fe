@@ -92,7 +92,7 @@ function ApplicationTopologyNode({ data }: NodeProps<Node<ApplicationTopologyNod
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight">{data.name}</p>
-          <p className="text-muted-foreground truncate text-xs">v{data.version}</p>
+          <p className="text-muted-foreground truncate text-xs">{data.version}</p>
         </div>
       </Link>
       <div className="mt-2 flex items-center gap-1.5 text-xs font-medium">

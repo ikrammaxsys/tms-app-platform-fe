@@ -7,6 +7,7 @@ import {
   type PlatformActionState,
 } from "./action-state"
 import { tmsApi } from "./api-service"
+import type { ApplicationUpsert } from "./types"
 import {
   createApplicationApi,
   createGroupApi,
@@ -145,7 +146,7 @@ function generateApplicationUid(): string {
   return `T${year}${month}${day}${random}`
 }
 
-function applicationBody(formData: FormData, includeUid = false) {
+function applicationBody(formData: FormData, includeUid = false, monitoringDefaults?: Partial<ApplicationUpsert>) {
   const lastDeployment = str(formData, "lastDeployment")
   let lastDeploymentIso: string | null = null
   if (lastDeployment) {
@@ -166,6 +167,10 @@ function applicationBody(formData: FormData, includeUid = false) {
     repositoryUrl: str(formData, "repositoryUrl"),
     serverId: num(formData, "serverId"),
     applicationGroupId: num(formData, "applicationGroupId"),
+    healthcheckUrl: monitoringDefaults?.healthcheckUrl ?? null,
+    isHealthcheck: monitoringDefaults?.isHealthcheck ?? 0,
+    logsPath: monitoringDefaults?.logsPath ?? null,
+    isScaningLogs: monitoringDefaults?.isScaningLogs ?? 0,
   }
 }
 
@@ -185,7 +190,18 @@ export async function updateApplication(
 ): Promise<PlatformActionState> {
   const id = num(formData, "id")
   return runAction(
-    () => updateApplicationApi(id, applicationBody(formData)),
+    async () => {
+      const existing = await tmsApi.getApplication(id)
+      await updateApplicationApi(
+        id,
+        applicationBody(formData, false, {
+          healthcheckUrl: existing.healthcheckUrl ?? existing.appUrl ?? "",
+          isHealthcheck: existing.isHealthcheck ?? 0,
+          logsPath: existing.logsPath ?? "",
+          isScaningLogs: existing.isScaningLogs ?? 0,
+        }),
+      )
+    },
     { message: "Application updated", redirectTo: `/applications/${id}` },
   )
 }

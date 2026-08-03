@@ -12,6 +12,9 @@ import { ServerMetricsPanel } from "@/components/platform/server-metrics-panel"
 import { ServerTopologyFlow } from "@/components/platform/server-topology-flow"
 import { buildServerTopology } from "@/lib/platform/server-topology-layout"
 import type { ServerDetail, ServerTimelineDays } from "@/lib/platform/queries"
+import { tmsApi } from "@/lib/platform/api-service"
+import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
+import { resolveApplicationLiveStatus } from "@/lib/platform/view"
 import { cn } from "@/lib/utils"
 
 const TABS = [
@@ -31,6 +34,34 @@ function ApplicationsPanel({
 }) {
   const [view, setView] = React.useState<ApplicationsView>("graph")
   const [query, setQuery] = React.useState("")
+  const [uptimeTimelines, setUptimeTimelines] = React.useState<
+    Record<number, UptimeTimeline | undefined>
+  >({})
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function loadTimelines() {
+      const entries = await Promise.all(
+        applications.map(async (app) => {
+          try {
+            const timeline = await tmsApi.getApplicationUptimeTimeline(app.id, 1)
+            return [app.id, timeline] as const
+          } catch {
+            return [app.id, undefined] as const
+          }
+        }),
+      )
+      if (!cancelled) {
+        setUptimeTimelines(Object.fromEntries(entries))
+      }
+    }
+
+    void loadTimelines()
+    return () => {
+      cancelled = true
+    }
+  }, [applications])
 
   const filteredApplications = React.useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -40,9 +71,18 @@ function ApplicationsPanel({
     )
   }, [applications, query])
 
+  const applicationsWithLiveStatus = React.useMemo(
+    () =>
+      filteredApplications.map((app) => ({
+        ...app,
+        status: resolveApplicationLiveStatus(app, uptimeTimelines[app.id]),
+      })),
+    [filteredApplications, uptimeTimelines],
+  )
+
   const { nodes, edges } = React.useMemo(
-    () => buildServerTopology([server], filteredApplications, { serverIds: [server.id] }),
-    [server, filteredApplications],
+    () => buildServerTopology([server], applicationsWithLiveStatus, { serverIds: [server.id] }),
+    [server, applicationsWithLiveStatus],
   )
 
   const appsOnCanvas = nodes.filter((n) => n.data.kind === "application").length
@@ -123,7 +163,11 @@ function ApplicationsPanel({
                     : "No applications match your search."}
                 </p>
               ) : (
-                <ApplicationsTable applications={filteredApplications} withActions />
+                <ApplicationsTable
+                  applications={filteredApplications}
+                  uptimeTimelines={uptimeTimelines}
+                  withActions
+                />
               )}
             </CardContent>
           </Card>

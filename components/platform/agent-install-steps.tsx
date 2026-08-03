@@ -9,7 +9,7 @@ import type { Agent } from "@/lib/platform/types"
 
 const INSTALL_STEPS = [
   "Download the App Platform Agent for your server.",
-  "Write the config file (see below) with your agent UID and token.",
+  "Write the config file (see configuration section) with your agent UID and token.",
   "The agent will authenticate with the platform and call the ready endpoint.",
 ]
 

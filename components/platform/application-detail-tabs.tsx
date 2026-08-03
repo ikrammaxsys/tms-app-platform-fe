@@ -28,6 +28,7 @@ import { tmsApi } from "@/lib/platform/api-service"
 import { formatDateTime } from "@/lib/platform/format"
 import type { ApplicationDetail } from "@/lib/platform/queries"
 import type { Application, AppStatus, Environment } from "@/lib/platform/types"
+import { resolveApplicationLiveStatus } from "@/lib/platform/view"
 import { cn } from "@/lib/utils"
 
 const TABS = [
@@ -49,18 +50,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function OverviewPanel({ detail }: { detail: ApplicationDetail }) {
   const { app, health, versionDrift, endpoints } = detail
-  const displayStatus: "Operational" | "Degraded" | "Unknown" =
-    detail.uptimeTimeline
-      ? detail.uptimeTimeline.totalChecks === 0
-        ? "Unknown"
-        : detail.uptimeTimeline.isOnline
-        ? "Operational"
-        : "Degraded"
-      : app.isOnline === true
-      ? "Operational"
-      : app.isOnline === false
-      ? "Degraded"
-      : "Unknown"
+  const displayStatus = resolveApplicationLiveStatus(
+    app,
+    detail.todayUptimeTimeline ?? detail.uptimeTimeline,
+  )
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -329,7 +322,11 @@ export function ApplicationDetailTabs({ detail }: { detail: ApplicationDetail })
       </TabsContent>
 
       <TabsContent value="configuration" className="mt-1">
-        <EntityAgentConfigSection entityLabel="application" entityName={detail.app.name} />
+        <EntityAgentConfigSection
+          entityLabel="application"
+          entityName={detail.app.name}
+          application={detail.app}
+        />
       </TabsContent>
     </Tabs>
   )

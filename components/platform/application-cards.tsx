@@ -7,7 +7,7 @@ import { AppAvatar, StatusLabel } from "@/components/platform/status"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDateTime } from "@/lib/platform/format"
-import { availabilityDays, availabilityDayFromUptimePoint } from "@/lib/platform/view"
+import { availabilityDays, availabilityDayFromUptimePoint, resolveApplicationLiveStatus } from "@/lib/platform/view"
 import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
 import { AvailabilityDayBarStrip } from "@/components/platform/availability-day-bar"
 
@@ -15,10 +15,14 @@ export function ApplicationCards({
   applications,
   loading = false,
   uptimeTimelines,
+  liveUptimeTimelines,
 }: {
   applications: ApplicationView[]
   loading?: boolean
+  /** 30-day (or similar) timeline for availability strip and uptime percent. */
   uptimeTimelines?: Record<number, UptimeTimeline | undefined>
+  /** Recent hourly timeline for live status badge. */
+  liveUptimeTimelines?: Record<number, UptimeTimeline | undefined>
 }) {
   if (loading) {
     return (
@@ -69,18 +73,10 @@ export function ApplicationCards({
               (week.filter((day) => day.status === "Healthy").length / week.length) * 100,
             )
 
-        const displayStatus: "Operational" | "Degraded" | "Unknown" =
-          overallTimeline
-            ? overallTimeline.totalChecks === 0
-              ? "Unknown"
-              : overallTimeline.isOnline
-              ? "Operational"
-              : "Degraded"
-            : app.isOnline === true
-            ? "Operational"
-            : app.isOnline === false
-            ? "Degraded"
-            : "Unknown"
+        const displayStatus = resolveApplicationLiveStatus(
+          app,
+          liveUptimeTimelines?.[app.id] ?? overallTimeline,
+        )
 
         return (
           <Card key={app.id} className="group transition-colors hover:border-primary/40">

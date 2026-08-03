@@ -13,12 +13,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { tmsApi } from "@/lib/platform/api-service"
 import { toApplicationView } from "@/lib/platform/view"
-import type { ApplicationView } from "@/lib/platform/types"
+import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
 
 export default function ApplicationsPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<unknown>(null)
   const [applications, setApplications] = React.useState<ApplicationView[]>([])
+  const [uptimeTimelines, setUptimeTimelines] = React.useState<
+    Record<number, UptimeTimeline | undefined>
+  >({})
   const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
@@ -33,11 +36,25 @@ export default function ApplicationsPage() {
         ])
         if (cancelled) return
         const byId = new Map((servers ?? []).map((s) => [s.id, s]))
-        setApplications(
-          (apps ?? [])
-            .map((a) => toApplicationView(a, byId.get(a.serverId)))
-            .sort((a, b) => a.name.localeCompare(b.name)),
+        const applicationViews = (apps ?? [])
+          .map((a) => toApplicationView(a, byId.get(a.serverId)))
+          .sort((a, b) => a.name.localeCompare(b.name))
+
+        setApplications(applicationViews)
+
+        const timelineEntries = await Promise.all(
+          applicationViews.map(async (app) => {
+            try {
+              const timeline = await tmsApi.getApplicationUptimeTimeline(app.id, 1)
+              return [app.id, timeline] as const
+            } catch {
+              return [app.id, undefined] as const
+            }
+          }),
         )
+
+        if (cancelled) return
+        setUptimeTimelines(Object.fromEntries(timelineEntries))
       } catch (err) {
         if (!cancelled) setError(err)
       } finally {
@@ -91,7 +108,11 @@ export default function ApplicationsPage() {
           {loading ? (
             <Skeleton className="h-64 w-full" />
           ) : (
-            <ApplicationsTable applications={applications} withActions />
+            <ApplicationsTable
+              applications={applications}
+              uptimeTimelines={uptimeTimelines}
+              withActions
+            />
           )}
         </CardContent>
       </Card>
