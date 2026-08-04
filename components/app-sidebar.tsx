@@ -14,6 +14,7 @@ import {
   BarChart3,
   Network,
   Bot,
+  Building2,
 } from "lucide-react"
 
 import {
@@ -37,6 +38,7 @@ const OPERATIONS_ITEMS = [
 const MAINTENANCE_ITEMS = [
   { title: "Applications", href: "/applications", icon: AppWindow },
   { title: "Application Groups", href: "/application-groups", icon: Boxes },
+  { title: "Organizations", href: "/organizations", icon: Building2 },
   { title: "Servers", href: "/servers", icon: Server },
   { title: "Agents", href: "/agents", icon: Bot },
   { title: "Deployments", href: "/deployments", icon: History },

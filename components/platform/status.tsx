@@ -10,7 +10,7 @@ const STATUS_STYLES: Record<StatusLabelValue, { dot: string; text: string }> = {
   Inactive: { dot: "bg-muted-foreground", text: "text-muted-foreground" },
   Unknown: { dot: "bg-slate-300 dark:bg-slate-600", text: "text-slate-600 dark:text-slate-400" },
   Operational: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
-  Degraded: { dot: "bg-red-500", text: "text-red-600 dark:text-red-400" },
+  Degraded: { dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
 }
 
 export function StatusDot({ status }: { status: StatusLabelValue }) {

@@ -2,6 +2,12 @@ import type { ApiResponse } from "./types"
 
 // const DEFAULT_BASE = "http://13.229.238.4:5128"
 const DEFAULT_BASE = "http://localhost:5128"
+
+/** Direct .NET API base URL — for agent config JSON, not the Next.js /backend-api proxy. */
+export function tmsApiDirectBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_TMS_API_BASE_URL || DEFAULT_BASE).replace(/\/$/, "")
+}
+
 /**
  * Server: talk directly to the .NET API.
  * Browser: use the Next.js rewrite `/backend-api/*` → TMS_API_BASE_URL
@@ -11,9 +17,7 @@ export function apiBaseUrl(): string {
   if (typeof window !== "undefined") {
     return "/backend-api"
   }
-  console.log(process.env.NEXT_PUBLIC_TMS_API_BASE_URL)
-  console.log(DEFAULT_BASE)
-  return (process.env.NEXT_PUBLIC_TMS_API_BASE_URL || DEFAULT_BASE).replace(/\/$/, "")
+  return tmsApiDirectBaseUrl()
 }
 
 export class ApiError extends Error {

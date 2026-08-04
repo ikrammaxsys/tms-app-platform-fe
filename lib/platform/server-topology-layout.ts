@@ -153,9 +153,11 @@ export function buildServerTopology(
         animated: app.status === "Degraded" || app.status === "Down",
         style: {
           stroke:
-            app.status === "Down" || app.status === "Degraded"
+            app.status === "Down"
               ? "var(--destructive)"
-              : "var(--border)",
+              : app.status === "Degraded"
+                ? "#f59e0b"
+                : "var(--border)",
           strokeWidth: 2,
         },
       })

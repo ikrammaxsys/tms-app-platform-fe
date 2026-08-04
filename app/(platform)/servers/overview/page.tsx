@@ -217,7 +217,11 @@ export default function ServersOverviewPage() {
           {loading ? (
             <Skeleton className="h-[min(70vh,640px)] w-full rounded-xl" />
           ) : (
-            <ServerTopologyFlow nodes={nodes} edges={edges} />
+            <ServerTopologyFlow
+              nodes={nodes}
+              edges={edges}
+              focusServerId={serverFilter !== "all" ? Number(serverFilter) : null}
+            />
           )}
           <p className="text-muted-foreground mt-3 text-xs">
             Each application node connects to its host server. Drag nodes to rearrange; use controls

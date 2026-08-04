@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Plus } from "lucide-react"
 
 import { PageHeader } from "@/components/platform/page-header"
-import { ApplicationsTable } from "@/components/platform/applications-table"
+import { OrganizationsTable } from "@/components/platform/organizations-table"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
 import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
 import { ExportCsvButton } from "@/components/platform/export-csv-button"
@@ -13,17 +13,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { tmsApi } from "@/lib/platform/api-service"
-import { applicationCsvColumns } from "@/lib/platform/csv-exports"
-import { toApplicationView } from "@/lib/platform/view"
-import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
+import { organizationCsvColumns } from "@/lib/platform/csv-exports"
+import type { Organization } from "@/lib/platform/types"
 
-export default function ApplicationsPage() {
+export default function OrganizationsPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<unknown>(null)
-  const [applications, setApplications] = React.useState<ApplicationView[]>([])
-  const [uptimeTimelines, setUptimeTimelines] = React.useState<
-    Record<number, UptimeTimeline | undefined>
-  >({})
+  const [organizations, setOrganizations] = React.useState<Organization[]>([])
   const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
@@ -32,31 +28,9 @@ export default function ApplicationsPage() {
       setLoading(true)
       setError(null)
       try {
-        const [apps, servers] = await Promise.all([
-          tmsApi.listApplications(),
-          tmsApi.listServers(),
-        ])
+        const items = await tmsApi.listOrganizations()
         if (cancelled) return
-        const byId = new Map((servers ?? []).map((s) => [s.id, s]))
-        const applicationViews = (apps ?? [])
-          .map((a) => toApplicationView(a, byId.get(a.serverId)))
-          .sort((a, b) => a.name.localeCompare(b.name))
-
-        setApplications(applicationViews)
-
-        const timelineEntries = await Promise.all(
-          applicationViews.map(async (app) => {
-            try {
-              const timeline = await tmsApi.getApplicationUptimeTimeline(app.id, 1)
-              return [app.id, timeline] as const
-            } catch {
-              return [app.id, undefined] as const
-            }
-          }),
-        )
-
-        if (cancelled) return
-        setUptimeTimelines(Object.fromEntries(timelineEntries))
+        setOrganizations([...(items ?? [])].sort((a, b) => a.name.localeCompare(b.name)))
       } catch (err) {
         if (!cancelled) setError(err)
       } finally {
@@ -73,8 +47,8 @@ export default function ApplicationsPage() {
     return (
       <div>
         <PageHeader
-          title="Applications"
-          description="Manage applications tracked across all servers and environments"
+          title="Organizations"
+          description="Manage organizations"
           actions={
             <OverviewRefreshButton
               onRefresh={() => setRefreshCounter((count) => count + 1)}
@@ -90,18 +64,18 @@ export default function ApplicationsPage() {
   return (
     <div>
       <PageHeader
-        title="Applications"
-        description="Manage applications tracked across all servers and environments"
+        title="Organizations"
+        description="Manage organizations"
         actions={
           <>
-            <Button render={<Link href="/applications/new" />}>
+            <Button render={<Link href="/organizations/new" />}>
               <Plus />
-              Create Application
+              Create Organization
             </Button>
             <ExportCsvButton
-              filename="applications"
-              columns={applicationCsvColumns(uptimeTimelines)}
-              rows={applications}
+              filename="organizations"
+              columns={organizationCsvColumns}
+              rows={organizations}
               disabled={loading}
             />
             <OverviewRefreshButton
@@ -116,11 +90,7 @@ export default function ApplicationsPage() {
           {loading ? (
             <Skeleton className="h-64 w-full" />
           ) : (
-            <ApplicationsTable
-              applications={applications}
-              uptimeTimelines={uptimeTimelines}
-              withActions
-            />
+            <OrganizationsTable organizations={organizations} />
           )}
         </CardContent>
       </Card>

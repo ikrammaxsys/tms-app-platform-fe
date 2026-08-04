@@ -8,10 +8,12 @@ import { PageHeader } from "@/components/platform/page-header"
 import { AgentsTable } from "@/components/platform/agents-table"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
 import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
+import { ExportCsvButton } from "@/components/platform/export-csv-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { mapAgentListItem } from "@/lib/platform/agents"
+import { agentCsvColumns } from "@/lib/platform/csv-exports"
 import { tmsApi } from "@/lib/platform/api-service"
 import type { Agent } from "@/lib/platform/types"
 
@@ -71,6 +73,12 @@ export default function AgentsPage() {
               <Plus />
               Create Agent
             </Button>
+            <ExportCsvButton
+              filename="agents"
+              columns={agentCsvColumns}
+              rows={agents}
+              disabled={loading}
+            />
             <OverviewRefreshButton
               onRefresh={() => setRefreshCounter((c) => c + 1)}
               refreshing={loading}

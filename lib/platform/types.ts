@@ -87,6 +87,8 @@ export interface Server {
   country: string
   provider: Provider
   domain: string
+  organizationId: number
+  organizationName?: string
 }
 
 export interface ServerUpsert {
@@ -96,6 +98,7 @@ export interface ServerUpsert {
   internalExternal: string
   country: string
   provider: string
+  organizationId: number
 }
 
 /** Matches ApplicationGroupItem from the .NET API. */
@@ -106,6 +109,18 @@ export interface ApplicationGroup {
 
 export interface ApplicationGroupUpsert {
   name: string
+}
+
+/** Matches OrganizationItem from the .NET API. */
+export interface Organization {
+  id: number
+  name: string
+  code: string
+}
+
+export interface OrganizationUpsert {
+  name: string
+  code: string
 }
 
 /** Matches ApplicationItem from the .NET API. */

@@ -4,6 +4,7 @@ import type {
   AppStatus,
   AvailabilityDay,
   DayStatus,
+  Organization,
   Server,
   UptimeTimeline,
   UptimeTimelinePoint,
@@ -65,6 +66,25 @@ export function getLatestElapsedTimelinePoint(
   return latest ?? timeline.points.at(-1)
 }
 
+/** Latest elapsed hour bucket that actually has uptime scan data. */
+export function getLatestScannedTimelinePoint(
+  timeline: UptimeTimeline,
+): UptimeTimelinePoint | undefined {
+  const asOfMs = new Date(timeline.to || timeline.lastChecked).getTime()
+
+  let latest: UptimeTimelinePoint | undefined
+  for (const point of timeline.points) {
+    const fromMs = new Date(point.from).getTime()
+    if (Number.isNaN(fromMs)) continue
+    if (!Number.isNaN(asOfMs) && fromMs > asOfMs) continue
+    if (timelinePointHasScanData(point)) {
+      latest = point
+    }
+  }
+
+  return latest
+}
+
 export function timelinePointHasScanData(point: UptimeTimelinePoint): boolean {
   return point.totalChecks > 0 && point.status !== "NoData"
 }
@@ -72,37 +92,32 @@ export function timelinePointHasScanData(point: UptimeTimelinePoint): boolean {
 export function liveStatusFromTimelinePoint(
   point: UptimeTimelinePoint,
 ): ApplicationLiveStatus {
-  if (!timelinePointHasScanData(point)) return "Unknown"
-  if (point.status === "Down") return "Down"
-  if (point.status === "Degraded") return "Degraded"
+  if (point.status === "NoData" || !timelinePointHasScanData(point)) return "Unknown"
   if (point.status === "Up") return "Operational"
+  // Hourly bucket status can be "Down" with mixed checks (e.g. 3 failures, 24 successes).
   if (point.downCount > 0 && point.upCount === 0) return "Down"
-  if (point.degradedCount > 0 || point.downCount > 0) return "Degraded"
+  if (point.status === "Degraded" || point.degradedCount > 0 || point.downCount > 0) {
+    return "Degraded"
+  }
+  if (point.status === "Down") return "Down"
   return "Operational"
 }
 
-/** Resolve live health from the latest elapsed uptime bucket, then fallbacks. */
+/** Resolve live health from the latest scanned hour bucket, then application fallbacks. */
 export function resolveApplicationLiveStatus(
   app: Pick<Application, "status" | "isOnline">,
   uptimeTimeline?: UptimeTimeline | null,
 ): ApplicationLiveStatus {
   if (uptimeTimeline) {
-    const latestPoint = getLatestElapsedTimelinePoint(uptimeTimeline)
-    if (latestPoint) {
-      return liveStatusFromTimelinePoint(latestPoint)
+    const latestScannedPoint = getLatestScannedTimelinePoint(uptimeTimeline)
+    if (latestScannedPoint) {
+      return liveStatusFromTimelinePoint(latestScannedPoint)
     }
-
-    if (uptimeTimeline.totalChecks === 0) return "Unknown"
-
-    if (uptimeTimeline.isOnline) return "Operational"
-
-    const current = uptimeTimeline.currentStatus?.trim().toLowerCase()
-    if (current === "down") return "Down"
-    return "Degraded"
+    return "Unknown"
   }
 
   if (app.isOnline === true) return "Operational"
-  if (app.isOnline === false) return "Degraded"
+  if (app.isOnline === false) return "Unknown"
 
   return normalizeAppStatus(app.status)
 }
@@ -229,4 +244,16 @@ export function toApplicationView(app: Application, server?: Server): Applicatio
     uptime: `${pct.toFixed(2)}%`,
     uptimePercent: pct,
   }
+}
+
+export function organizationCodeMap(organizations: Organization[]): Map<number, string> {
+  return new Map(organizations.map((o) => [o.id, o.code]))
+}
+
+export function organizationCodeById(
+  organizations: Organization[],
+  organizationId: number | undefined,
+): string {
+  if (!organizationId) return "-"
+  return organizations.find((o) => o.id === organizationId)?.code ?? "-"
 }

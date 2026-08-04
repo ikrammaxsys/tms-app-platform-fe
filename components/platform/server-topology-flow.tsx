@@ -10,8 +10,10 @@ import {
   MiniMap,
   Position,
   ReactFlow,
+  ReactFlowProvider,
   applyEdgeChanges,
   applyNodeChanges,
+  useReactFlow,
   type Edge,
   type EdgeChange,
   type Node,
@@ -75,7 +77,8 @@ function ApplicationTopologyNode({ data }: NodeProps<Node<ApplicationTopologyNod
     <div
       className={cn(
         "bg-card rounded-xl border px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md",
-        (data.status === "Down" || data.status === "Degraded") && "border-destructive/50",
+        data.status === "Down" && "border-destructive/50",
+        data.status === "Degraded" && "border-amber-500/50",
       )}
       style={{ width: APPLICATION_NODE_WIDTH, height: APPLICATION_NODE_HEIGHT }}
     >
@@ -108,13 +111,56 @@ const nodeTypes = {
   application: ApplicationTopologyNode,
 }
 
-export function ServerTopologyFlow({
+function clusterNodeIds(focusServerId: number, edges: Edge[]): { id: string }[] {
+  const serverNodeId = `server-${focusServerId}`
+  const ids = new Set<string>([serverNodeId])
+  for (const edge of edges) {
+    if (edge.target === serverNodeId) ids.add(edge.source)
+  }
+  return Array.from(ids, (id) => ({ id }))
+}
+
+function TopologyFitView({
+  focusServerId,
   nodes,
   edges,
+}: {
+  focusServerId?: number | null
+  nodes: Node<TopologyNodeData>[]
+  edges: Edge[]
+}) {
+  const { fitView } = useReactFlow()
+
+  React.useEffect(() => {
+    if (nodes.length === 0) return
+
+    const focused = focusServerId != null
+    const fitNodes = focused ? clusterNodeIds(focusServerId, edges) : undefined
+
+    const frameId = window.requestAnimationFrame(() => {
+      void fitView({
+        nodes: fitNodes,
+        padding: focused ? 0.35 : 0.2,
+        duration: 320,
+        maxZoom: focused ? 1.25 : 1.5,
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [focusServerId, nodes, edges, fitView])
+
+  return null
+}
+
+function ServerTopologyFlowCanvas({
+  nodes,
+  edges,
+  focusServerId,
   className,
 }: {
   nodes: Node<TopologyNodeData>[]
   edges: Edge[]
+  focusServerId?: number | null
   className?: string
 }) {
   const [flowNodes, setFlowNodes] = React.useState(nodes)
@@ -150,12 +196,11 @@ export function ServerTopologyFlow({
         onEdgesChange={(changes: EdgeChange[]) => {
           setFlowEdges((current) => applyEdgeChanges(changes, current))
         }}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
         maxZoom={1.5}
         proOptions={{ hideAttribution: true }}
       >
+        <TopologyFitView focusServerId={focusServerId} nodes={flowNodes} edges={flowEdges} />
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls showInteractive={false} />
         <MiniMap
@@ -166,5 +211,28 @@ export function ServerTopologyFlow({
         />
       </ReactFlow>
     </div>
+  )
+}
+
+export function ServerTopologyFlow({
+  nodes,
+  edges,
+  focusServerId,
+  className,
+}: {
+  nodes: Node<TopologyNodeData>[]
+  edges: Edge[]
+  focusServerId?: number | null
+  className?: string
+}) {
+  return (
+    <ReactFlowProvider>
+      <ServerTopologyFlowCanvas
+        nodes={nodes}
+        edges={edges}
+        focusServerId={focusServerId}
+        className={className}
+      />
+    </ReactFlowProvider>
   )
 }

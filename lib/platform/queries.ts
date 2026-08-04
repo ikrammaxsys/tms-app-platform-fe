@@ -10,6 +10,8 @@ import {
 import type {
   Application,
   ApplicationGroup,
+  Organization,
+  OrganizationUpsert,
   ApplicationUpsert,
   ApplicationView,
   AvailabilityDay,
@@ -266,6 +268,39 @@ export async function updateGroupApi(id: number, body: { name: string }): Promis
 
 export async function deleteGroupApi(id: number): Promise<boolean> {
   return tmsApi.deleteApplicationGroup(id)
+}
+
+/* ------------------------------- Organizations ------------------------------ */
+
+export async function getOrganizations(): Promise<Organization[]> {
+  const items = await tmsApi.listOrganizations()
+  return [...(items ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function getOrganizationById(id: number): Promise<Organization | undefined> {
+  try {
+    const item = await tmsApi.getOrganization(id)
+    return item ?? undefined
+  } catch (error) {
+    if (isNotFound(error)) return undefined
+    throw error
+  }
+}
+
+export async function getOrganizationOptions(): Promise<SelectOption[]> {
+  return tmsApi.organizationOptions()
+}
+
+export async function createOrganizationApi(body: OrganizationUpsert): Promise<Organization> {
+  return tmsApi.createOrganization(body)
+}
+
+export async function updateOrganizationApi(id: number, body: OrganizationUpsert): Promise<boolean> {
+  return tmsApi.updateOrganization(id, body)
+}
+
+export async function deleteOrganizationApi(id: number): Promise<boolean> {
+  return tmsApi.deleteOrganization(id)
 }
 
 /* ----------------------------- Applications ----------------------------- */
@@ -627,6 +662,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         description: "Centralize the configuration of the application for agents",
         tag: "Configuration",
       },
+      {
+        title: "Organization management",
+        description: "Manage organizations and their servers.",
+        tag: "Configuration",
+      }
     ],
     shipped: [
       {

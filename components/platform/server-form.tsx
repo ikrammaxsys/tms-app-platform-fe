@@ -18,7 +18,7 @@ import {
   INTERNAL_EXTERNAL_OPTIONS,
   PROVIDER_OPTIONS,
 } from "@/lib/platform/options"
-import type { Server } from "@/lib/platform/types"
+import type { Organization, Server } from "@/lib/platform/types"
 import type { PlatformActionFn } from "@/lib/platform/action-state"
 import { usePlatformAction } from "@/hooks/use-platform-action"
 
@@ -42,13 +42,18 @@ function Field({
 export function ServerForm({
   action,
   server,
+  organizations,
 }: {
   action: PlatformActionFn
   server?: Server
+  organizations: Organization[]
 }) {
   const envItems = Object.fromEntries(ENVIRONMENT_OPTIONS.map((v) => [v, v]))
   const ieItems = Object.fromEntries(INTERNAL_EXTERNAL_OPTIONS.map((v) => [v, v]))
   const providerItems = Object.fromEntries(PROVIDER_OPTIONS.map((v) => [v, v]))
+  const organizationItems = Object.fromEntries(
+    organizations.map((o) => [String(o.id), `${o.name} (${o.code})`]),
+  )
   const { formAction, pending } = usePlatformAction(action)
 
   return (
@@ -59,6 +64,24 @@ export function ServerForm({
           <CardTitle>Server Details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field label="Organization">
+            <Select
+              name="organizationId"
+              items={organizationItems}
+              defaultValue={String(server?.organizationId ?? organizations[0]?.id ?? "")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((o) => (
+                  <SelectItem key={o.id} value={String(o.id)}>
+                    {o.name} ({o.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
           <Field label="Domain" htmlFor="domain">
             <Input
               id="domain"

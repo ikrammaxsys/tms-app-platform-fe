@@ -24,28 +24,38 @@ import { Button } from "@/components/ui/button"
 import { EnvironmentBadge } from "@/components/platform/status"
 import { RowActions } from "@/components/platform/row-actions"
 import { deleteServer } from "@/lib/platform/actions"
-import type { Environment, Server } from "@/lib/platform/types"
+import type { Environment, Organization, Server } from "@/lib/platform/types"
+import { organizationCodeMap } from "@/lib/platform/view"
 
 const PAGE_SIZE = 10
 
-export function ServersTable({ servers }: { servers: Server[] }) {
+export function ServersTable({
+  servers,
+  organizations,
+}: {
+  servers: Server[]
+  organizations: Organization[]
+}) {
   const [query, setQuery] = React.useState("")
   const [environment, setEnvironment] = React.useState("all")
   const [page, setPage] = React.useState(1)
+
+  const orgCodes = React.useMemo(() => organizationCodeMap(organizations), [organizations])
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase()
     return servers.filter((s) => {
       if (environment !== "all" && s.environment !== environment) return false
+      const companyCode = orgCodes.get(s.organizationId) ?? ""
       if (
         q &&
-        !`${s.domain} ${s.ipAddress} ${s.provider} ${s.country}`.toLowerCase().includes(q)
+        !`${s.domain} ${s.ipAddress} ${s.provider} ${s.country} ${companyCode}`.toLowerCase().includes(q)
       ) {
         return false
       }
       return true
     })
-  }, [servers, query, environment])
+  }, [servers, query, environment, orgCodes])
 
   React.useEffect(() => setPage(1), [query, environment])
 
@@ -95,6 +105,7 @@ export function ServersTable({ servers }: { servers: Server[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Domain</TableHead>
+              <TableHead>Company Code</TableHead>
               <TableHead>IP Address</TableHead>
               <TableHead>Environment</TableHead>
               <TableHead>Scope</TableHead>
@@ -106,7 +117,7 @@ export function ServersTable({ servers }: { servers: Server[] }) {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-muted-foreground h-24 text-center">
+                <TableCell colSpan={8} className="text-muted-foreground h-24 text-center">
                   No servers found.
                 </TableCell>
               </TableRow>
@@ -120,6 +131,9 @@ export function ServersTable({ servers }: { servers: Server[] }) {
                     >
                       {server.domain}
                     </Link>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {orgCodes.get(server.organizationId) ?? "-"}
                   </TableCell>
                   <TableCell className="font-mono text-sm">{server.ipAddress}</TableCell>
                   <TableCell>

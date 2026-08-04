@@ -41,7 +41,7 @@ export function AgentDetailTabs({
       </TabsList>
 
       <TabsContent value="installation" className="mt-1">
-        <div className="max-w-3xl space-y-4">
+        <div className="w-full space-y-4">
           <AgentInstallSteps agent={agent} />
           <AgentConnectionPanel agent={agent} onUpdate={onAgentUpdate} />
         </div>

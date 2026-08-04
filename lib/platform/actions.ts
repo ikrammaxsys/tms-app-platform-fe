@@ -11,12 +11,15 @@ import type { ApplicationUpsert } from "./types"
 import {
   createApplicationApi,
   createGroupApi,
+  createOrganizationApi,
   createServerApi,
   deleteApplicationApi,
   deleteGroupApi,
+  deleteOrganizationApi,
   deleteServerApi,
   updateApplicationApi,
   updateGroupApi,
+  updateOrganizationApi,
   updateServerApi,
 } from "./queries"
 
@@ -33,6 +36,7 @@ function revalidatePlatform(applicationId?: number) {
   revalidatePath("/applications")
   revalidatePath("/servers")
   revalidatePath("/application-groups")
+  revalidatePath("/organizations")
   revalidatePath("/deployments")
   if (applicationId) revalidatePath(`/applications/${applicationId}`)
 }
@@ -66,6 +70,7 @@ export async function createServer(
         internalExternal: str(formData, "internalExternal") || "Internal",
         country: str(formData, "country"),
         provider: str(formData, "provider") || "AWS",
+        organizationId: num(formData, "organizationId"),
       }),
     { message: "Server created", redirectTo: "/servers" },
   )
@@ -85,6 +90,7 @@ export async function updateServer(
         internalExternal: str(formData, "internalExternal") || "Internal",
         country: str(formData, "country"),
         provider: str(formData, "provider") || "AWS",
+        organizationId: num(formData, "organizationId"),
       }),
     { message: "Server updated", redirectTo: `/servers/${id}` },
   )
@@ -132,6 +138,48 @@ export async function deleteGroup(
   return runAction(
     () => deleteGroupApi(id),
     { message: "Application group deleted", redirectTo: "/application-groups" },
+  )
+}
+
+/* ------------------------------- Organizations ------------------------------ */
+
+export async function createOrganization(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
+  return runAction(
+    () =>
+      createOrganizationApi({
+        name: str(formData, "name"),
+        code: str(formData, "code"),
+      }),
+    { message: "Organization created", redirectTo: "/organizations" },
+  )
+}
+
+export async function updateOrganization(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
+  const id = num(formData, "id")
+  return runAction(
+    () =>
+      updateOrganizationApi(id, {
+        name: str(formData, "name"),
+        code: str(formData, "code"),
+      }),
+    { message: "Organization updated", redirectTo: `/organizations/${id}` },
+  )
+}
+
+export async function deleteOrganization(
+  _prev: PlatformActionState | null,
+  formData: FormData,
+): Promise<PlatformActionState> {
+  const id = num(formData, "id")
+  return runAction(
+    () => deleteOrganizationApi(id),
+    { message: "Organization deleted", redirectTo: "/organizations" },
   )
 }
 

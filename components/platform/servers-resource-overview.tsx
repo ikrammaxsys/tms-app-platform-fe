@@ -81,6 +81,7 @@ function ServerResourceCard({
             {server.domain}
           </Link>
         </CardTitle>
+        <p className="text-muted-foreground mt-0.5 font-mono text-xs">{server.ipAddress}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <EnvironmentBadge environment={server.environment as Environment} />
           <span className="text-muted-foreground text-xs">{server.provider}</span>

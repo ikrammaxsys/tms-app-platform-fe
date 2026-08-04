@@ -5,7 +5,8 @@ export function parseApiDateTime(value: string): Date | null {
   const trimmed = value.trim()
   if (!trimmed) return null
   const hasOffset = /[zZ]$|[+-]\d{2}:\d{2}$/.test(trimmed)
-  const normalized = hasOffset ? trimmed : `${trimmed}+08:00`
+  const isoLike = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T")
+  const normalized = hasOffset ? isoLike : `${isoLike}+08:00`
   const date = new Date(normalized)
   return Number.isNaN(date.getTime()) ? null : date
 }
@@ -42,6 +43,23 @@ export function formatDateTime(value: string | null | undefined): string {
     minute: "2-digit",
     timeZone: MALAYSIA_TIME_ZONE,
   })
+}
+
+/** Compact relative time, e.g. "2h ago", "3d ago". Falls back to formatted date. */
+export function formatRelativeTime(value: string | null | undefined): string {
+  const date = value ? parseApiDateTime(value) : null
+  if (!date) return "-"
+
+  const diffMs = date.getTime() - Date.now()
+  const absSeconds = Math.round(Math.abs(diffMs) / 1000)
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" })
+
+  if (absSeconds < 60) return rtf.format(Math.round(diffMs / 1000), "second")
+  if (absSeconds < 3600) return rtf.format(Math.round(diffMs / 60000), "minute")
+  if (absSeconds < 86400) return rtf.format(Math.round(diffMs / 3600000), "hour")
+  if (absSeconds < 86400 * 7) return rtf.format(Math.round(diffMs / 86400000), "day")
+
+  return formatDateTime(value)
 }
 
 /** Human-readable byte size (1024-based). */

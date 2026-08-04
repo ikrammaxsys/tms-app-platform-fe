@@ -1,4 +1,5 @@
 import type { Agent, Application } from "./types"
+import { tmsApiDirectBaseUrl } from "./api"
 import { boolFromApiFlag } from "./application-monitoring"
 
 export interface AgentConfigThresholds {
@@ -50,19 +51,11 @@ export interface AgentConfig {
   logScanning: AgentConfigLogScanning
 }
 
-function platformBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin.replace(/\/$/, "")
-    return `${origin}/backend-api`
-  }
-  return "http://localhost:5128"
-}
-
 export function buildDefaultAgentConfig(
   agent: Pick<Agent, "uid" | "token" | "serverDomain">,
   hostIp = "",
 ): AgentConfig {
-  const baseUrl = platformBaseUrl()
+  const baseUrl = tmsApiDirectBaseUrl()
 
   return {
     agentUid: agent.uid,
@@ -96,6 +89,68 @@ export function buildDefaultAgentConfig(
       ingestEndpoint: `${baseUrl}/api/application-logs/ingest`,
     },
   }
+}
+
+/** Canonical JSON key order — mirrors buildDefaultAgentConfig field layout. */
+const AGENT_CONFIG_KEY_ORDER = {
+  root: [
+    "agentUid",
+    "token",
+    "central",
+    "host",
+    "applications",
+    "intervalMs",
+    "logScanning",
+  ],
+  central: [
+    "baseUrl",
+    "endpointGetMonitoredApps",
+    "applicationUptimeReportEndpoint",
+    "hostMetricsReportEndpoint",
+    "updateSelfReadness",
+  ],
+  host: ["metrics"],
+  "host.metrics": ["enabled", "hostIp", "hostId", "thresholds"],
+  thresholds: ["cpuUsagePercent", "memoryUsagePercent", "diskUsagePercent"],
+  application: ["appId", "name", "url", "logs_path", "enabled"],
+  logScanning: ["enabled", "intervalMs", "linesPerScan", "progressDir", "ingestEndpoint"],
+} as const
+
+type AgentConfigKeyScope = keyof typeof AGENT_CONFIG_KEY_ORDER
+
+function orderedKeys(keys: string[], scope: AgentConfigKeyScope): string[] {
+  const order = AGENT_CONFIG_KEY_ORDER[scope] as readonly string[]
+  const rank = new Map<string, number>(order.map((key, index) => [key, index]))
+  return [...keys].sort((a, b) => {
+    const left = rank.get(a) ?? order.length
+    const right = rank.get(b) ?? order.length
+    return left - right || a.localeCompare(b)
+  })
+}
+
+function childScope(parentScope: AgentConfigKeyScope, key: string): AgentConfigKeyScope {
+  if (parentScope === "root") {
+    if (key === "central" || key === "host" || key === "logScanning") return key
+  }
+  if (parentScope === "host" && key === "metrics") return "host.metrics"
+  if (parentScope === "host.metrics" && key === "thresholds") return "thresholds"
+  return parentScope
+}
+
+function sortKeysDeep(value: unknown, scope: AgentConfigKeyScope = "root"): unknown {
+  if (Array.isArray(value)) {
+    const itemScope: AgentConfigKeyScope = scope === "root" ? "application" : scope
+    return value.map((item) => sortKeysDeep(item, itemScope))
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>
+    return orderedKeys(Object.keys(record), scope).reduce<Record<string, unknown>>((acc, key) => {
+      const nextScope = childScope(scope, key)
+      acc[key] = sortKeysDeep(record[key], nextScope)
+      return acc
+    }, {})
+  }
+  return value
 }
 
 function normalizeApplication(app: Partial<AgentConfigApplication>): AgentConfigApplication {
@@ -139,21 +194,6 @@ export function buildTemplateAgentConfig(
     ...buildDefaultAgentConfig(agent, hostIp),
     applications: buildApplicationsFromRecords(serverApplications),
   }
-}
-
-function sortKeysDeep(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortKeysDeep)
-  }
-  if (value && typeof value === "object") {
-    return Object.keys(value as Record<string, unknown>)
-      .sort()
-      .reduce<Record<string, unknown>>((acc, key) => {
-        acc[key] = sortKeysDeep((value as Record<string, unknown>)[key])
-        return acc
-      }, {})
-  }
-  return value
 }
 
 function normalizeConfigForCompare(value: unknown): string {
@@ -228,7 +268,7 @@ export function parseAgentConfig(
       ...parsed,
       agentUid: parsed.agentUid ?? agent.uid,
       token: parsed.token ?? agent.token,
-      central: { ...defaults.central, ...parsed.central },
+      central: defaults.central,
       host: {
         metrics: {
           ...defaults.host.metrics,
@@ -241,7 +281,11 @@ export function parseAgentConfig(
         },
       },
       applications: serverApps,
-      logScanning: { ...defaults.logScanning, ...parsed.logScanning },
+      logScanning: {
+        ...defaults.logScanning,
+        ...parsed.logScanning,
+        ingestEndpoint: defaults.logScanning.ingestEndpoint,
+      },
       intervalMs: parsed.intervalMs ?? defaults.intervalMs,
     }
   } catch {
@@ -252,14 +296,14 @@ export function parseAgentConfig(
 export function formatConfigJson(json: string): string {
   if (!json.trim()) return "{}"
   try {
-    return JSON.stringify(JSON.parse(json), null, 2)
+    return JSON.stringify(sortKeysDeep(JSON.parse(json)), null, 2)
   } catch {
     return json
   }
 }
 
 export function serializeAgentConfig(config: AgentConfig): string {
-  return JSON.stringify(config, null, 2)
+  return JSON.stringify(sortKeysDeep(config), null, 2)
 }
 
 export interface EntityAgentConfigSettings {

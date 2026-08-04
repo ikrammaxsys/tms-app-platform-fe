@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/platform/page-header"
 import { ServerForm } from "@/components/platform/server-form"
 import { Button } from "@/components/ui/button"
 import { updateServer } from "@/lib/platform/actions"
-import { getServerById } from "@/lib/platform/queries"
+import { getOrganizations, getServerById } from "@/lib/platform/queries"
 
 export default async function EditServerPage({
   params,
@@ -14,7 +14,10 @@ export default async function EditServerPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const server = await getServerById(Number(id))
+  const [server, organizations] = await Promise.all([
+    getServerById(Number(id)),
+    getOrganizations(),
+  ])
   if (!server) notFound()
 
   return (
@@ -31,7 +34,7 @@ export default async function EditServerPage({
         }
       />
       <PageHeader title={`Edit ${server.domain}`} description="Update server details" />
-      <ServerForm action={updateServer} server={server} />
+      <ServerForm action={updateServer} server={server} organizations={organizations} />
     </div>
   )
 }

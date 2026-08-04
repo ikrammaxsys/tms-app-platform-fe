@@ -8,10 +8,12 @@ import { PageHeader } from "@/components/platform/page-header"
 import { GroupsTable } from "@/components/platform/groups-table"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
 import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
+import { ExportCsvButton } from "@/components/platform/export-csv-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { tmsApi } from "@/lib/platform/api-service"
+import { applicationGroupCsvColumns } from "@/lib/platform/csv-exports"
 import type { ApplicationGroup } from "@/lib/platform/types"
 
 export default function ApplicationGroupsPage() {
@@ -79,6 +81,12 @@ export default function ApplicationGroupsPage() {
               <Plus />
               Create Group
             </Button>
+            <ExportCsvButton
+              filename="application-groups"
+              columns={applicationGroupCsvColumns(appCounts)}
+              rows={groups}
+              disabled={loading}
+            />
             <OverviewRefreshButton
               onRefresh={() => setRefreshCounter((count) => count + 1)}
               refreshing={loading}

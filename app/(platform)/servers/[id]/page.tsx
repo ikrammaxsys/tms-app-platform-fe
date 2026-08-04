@@ -10,7 +10,8 @@ import { DeleteButton } from "@/components/platform/delete-button"
 import { PageRefreshButton } from "@/components/platform/page-refresh-button"
 import { ServerDetailTabs } from "@/components/platform/server-detail-tabs"
 import { deleteServer } from "@/lib/platform/actions"
-import { getServerDetail, parseServerTimelineDays } from "@/lib/platform/queries"
+import { getOrganizations, getServerDetail, parseServerTimelineDays } from "@/lib/platform/queries"
+import { organizationCodeById } from "@/lib/platform/view"
 import type { Environment } from "@/lib/platform/types"
 
 function Meta({ label, children }: { label: string; children: React.ReactNode }) {
@@ -35,10 +36,14 @@ export default async function ServerDetailPage({
   const { days: daysParam } = await searchParams
   const serverId = Number(id)
   const days = parseServerTimelineDays(daysParam)
-  const detail = await getServerDetail(serverId, days)
+  const [detail, organizations] = await Promise.all([
+    getServerDetail(serverId, days),
+    getOrganizations(),
+  ])
   if (!detail) notFound()
 
   const { server } = detail
+  const companyCode = organizationCodeById(organizations, server.organizationId)
 
   return (
     <div>
@@ -81,7 +86,10 @@ export default async function ServerDetailPage({
 
           <Separator className="my-4" />
 
-          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+            <Meta label="Company Code">
+              <span className="font-mono">{companyCode}</span>
+            </Meta>
             <Meta label="Domain">{server.domain}</Meta>
             <Meta label="IP Address">
               <span className="font-mono">{server.ipAddress}</span>

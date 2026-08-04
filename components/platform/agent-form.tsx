@@ -260,7 +260,7 @@ export function AgentForm({ agent }: { agent?: Agent }) {
   const isLastStep = currentStep === WIZARD_STEPS.length - 1
 
   return (
-    <div className="max-w-3xl">
+    <div className={cn(currentStep === 1 ? "w-full" : "max-w-3xl")}>
       <AgentWizardStepper
         currentStep={currentStep}
         maxReachableStep={maxReachableStep}

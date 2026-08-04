@@ -9,6 +9,8 @@ import type {
   ApplicationDeploymentUpsert,
   ApplicationGroup,
   ApplicationGroupUpsert,
+  Organization,
+  OrganizationUpsert,
   ApplicationLogChunkContent,
   ApplicationLogList,
   ApplicationUpsert,
@@ -48,6 +50,24 @@ export const tmsApi = {
 
   applicationsByGroup: (id: number) =>
     apiFetch<Application[]>(`/api/application-groups/${id}/applications`),
+
+  /* ------------------------------- Organizations ------------------------------ */
+
+  listOrganizations: () => apiFetch<Organization[]>("/api/organizations"),
+
+  getOrganization: (id: number) =>
+    apiFetch<Organization>(`/api/organizations/${id}`),
+
+  createOrganization: (body: OrganizationUpsert) =>
+    apiFetch<Organization>("/api/organizations", { method: "POST", body }),
+
+  updateOrganization: (id: number, body: OrganizationUpsert) =>
+    apiFetch<boolean>(`/api/organizations/${id}`, { method: "PUT", body }),
+
+  deleteOrganization: (id: number) =>
+    apiFetch<boolean>(`/api/organizations/${id}`, { method: "DELETE" }),
+
+  organizationOptions: () => apiFetch<SelectOption[]>("/api/organizations/options"),
 
   /* ------------------------------- Applications ------------------------------- */
 

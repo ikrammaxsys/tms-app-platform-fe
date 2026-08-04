@@ -6,6 +6,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { ExportCsvButton } from "@/components/platform/export-csv-button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -34,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { tmsApi } from "@/lib/platform/api-service"
+import { deploymentCsvColumns } from "@/lib/platform/csv-exports"
 import type { Application, ApplicationDeployment } from "@/lib/platform/types"
 
 function nowTimestamp() {
@@ -176,10 +178,18 @@ export function DeploymentsPanel({
                 : "Track application deployment versions and commits."}
             </p>
           </div>
-          <Button size="sm" onClick={openCreate}>
-            <Plus />
-            Add Deployment
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportCsvButton
+              filename={applicationName ? `${applicationName}-deployments` : "deployments"}
+              columns={deploymentCsvColumns}
+              rows={rows}
+              disabled={loading}
+            />
+            <Button size="sm" onClick={openCreate}>
+              <Plus />
+              Add Deployment
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
