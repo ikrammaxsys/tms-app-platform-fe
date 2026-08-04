@@ -15,6 +15,7 @@ import {
   Network,
   Bot,
   Building2,
+  GitBranch,
 } from "lucide-react"
 
 import {
@@ -25,6 +26,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
@@ -45,8 +47,12 @@ const MAINTENANCE_ITEMS = [
 ]
 
 const OTHERS_ITEMS = [
-  { title: "Roadmap", href: "/roadmap", icon: Map }
+  { title: "Roadmap", href: "/roadmap", icon: Map },
 ]
+
+const DESIGN_ITEMS = [
+  { title: "Dependency Editor", href: "/dependency-editor", icon: GitBranch, badge: "Beta" },
+] as const
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/"
@@ -116,6 +122,29 @@ export function AppSidebar() {
                     <item.icon />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+         <SidebarGroup>
+          <SidebarGroupLabel>Design</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {DESIGN_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={isActive(pathname, item.href)}
+                    tooltip={item.title}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                  {"badge" in item && item.badge ? (
+                    <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+                  ) : null}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

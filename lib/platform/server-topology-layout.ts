@@ -1,6 +1,6 @@
 import type { Edge, Node } from "@xyflow/react"
 
-import { avatarColor, initialOf } from "@/lib/platform/view"
+import { avatarColor, initialOf, normalizeAppStatus } from "@/lib/platform/view"
 import type { Application, AppStatus, Server } from "@/lib/platform/types"
 
 export type ServerTopologyNodeData = {
@@ -69,6 +69,24 @@ function appsForServer(applications: Application[], serverId: number): Applicati
   return applications
     .filter((a) => a.serverId === serverId)
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function topologyConnectionStyle(status: AppStatus): {
+  stroke: string
+  strokeWidth: number
+  animated: boolean
+} {
+  const normalized = normalizeAppStatus(status)
+  if (normalized === "Operational") {
+    return { stroke: "#16a34a", strokeWidth: 2, animated: true }
+  }
+  if (normalized === "Degraded") {
+    return { stroke: "#f59e0b", strokeWidth: 2, animated: true }
+  }
+  if (normalized === "Down") {
+    return { stroke: "var(--destructive)", strokeWidth: 2, animated: true }
+  }
+  return { stroke: "var(--border)", strokeWidth: 2, animated: false }
 }
 
 /** Hub-and-spoke nodes and edges for one or more servers. */
@@ -145,20 +163,17 @@ export function buildServerTopology(
         draggable: true,
       })
 
+      const connectionStyle = topologyConnectionStyle(app.status)
+
       edges.push({
         id: `edge-${app.id}-${server.id}`,
         source: appNodeId,
         target: serverNodeId,
         type: "smoothstep",
-        animated: app.status === "Degraded" || app.status === "Down",
+        animated: connectionStyle.animated,
         style: {
-          stroke:
-            app.status === "Down"
-              ? "var(--destructive)"
-              : app.status === "Degraded"
-                ? "#f59e0b"
-                : "var(--border)",
-          strokeWidth: 2,
+          stroke: connectionStyle.stroke,
+          strokeWidth: connectionStyle.strokeWidth,
         },
       })
     })
