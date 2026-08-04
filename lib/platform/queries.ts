@@ -644,6 +644,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         title: "New Deployment Notification",
         description: "Send notification to team when new deployment is deployed.",
         tag: "Notification",
+      },
+      {
+        title: "Reporting",
+        description: "Generate reports for applications and servers.",
+        tag: "Reporting",
       }
     ],
     inProgress: [
@@ -666,6 +671,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         title: "Organization management",
         description: "Manage organizations and their servers.",
         tag: "Configuration",
+      },
+      {
+        title: "Dependency Graph and Editor (BETA)",
+        description: "Visualize the dependency graph of applications. ",
+        tag: "Observability",
       }
     ],
     shipped: [
