@@ -122,6 +122,16 @@ export function resolveApplicationLiveStatus(
   return normalizeAppStatus(app.status)
 }
 
+/** Status from the latest uptime scan only; Unknown when no scan data exists. */
+export function applicationStatusFromLatestScan(
+  uptimeTimeline?: UptimeTimeline | null,
+): ApplicationLiveStatus {
+  if (!uptimeTimeline) return "Unknown"
+  const latestScannedPoint = getLatestScannedTimelinePoint(uptimeTimeline)
+  if (!latestScannedPoint) return "Unknown"
+  return liveStatusFromTimelinePoint(latestScannedPoint)
+}
+
 /** Map API uptime percent to day strip color (matches applications overview cards). */
 export function dayStatusFromUptimePercent(uptime?: number | null): DayStatus {
   if (uptime === undefined || uptime === null) return "NoData"

@@ -8,12 +8,15 @@ import { PageHeader } from "@/components/platform/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { tmsApi } from "@/lib/platform/api-service"
-import type { Application } from "@/lib/platform/types"
+import type { Application, UptimeTimeline } from "@/lib/platform/types"
 
 export default function DependencyEditorPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<unknown>(null)
   const [applications, setApplications] = React.useState<Application[]>([])
+  const [uptimeTimelines, setUptimeTimelines] = React.useState<
+    Record<number, UptimeTimeline | undefined>
+  >({})
 
   React.useEffect(() => {
     let cancelled = false
@@ -24,7 +27,21 @@ export default function DependencyEditorPage() {
       try {
         const items = await tmsApi.listApplications()
         if (cancelled) return
-        setApplications([...(items ?? [])].sort((a, b) => a.name.localeCompare(b.name)))
+        const sorted = [...(items ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+        setApplications(sorted)
+
+        const timelineEntries = await Promise.all(
+          sorted.map(async (app) => {
+            try {
+              const timeline = await tmsApi.getApplicationUptimeTimeline(app.id, 1)
+              return [app.id, timeline] as const
+            } catch {
+              return [app.id, undefined] as const
+            }
+          }),
+        )
+        if (cancelled) return
+        setUptimeTimelines(Object.fromEntries(timelineEntries))
       } catch (err) {
         if (!cancelled) setError(err)
       } finally {
@@ -74,7 +91,7 @@ export default function DependencyEditorPage() {
           </div>
         }
       />
-      <DependencyEditor applications={applications} />
+      <DependencyEditor applications={applications} uptimeTimelines={uptimeTimelines} />
     </div>
   )
 }

@@ -37,6 +37,7 @@ export default function ServersOverviewPage() {
     Record<number, UptimeTimeline | undefined>
   >({})
   const [serverFilter, setServerFilter] = React.useState("all")
+  const [environmentFilter, setEnvironmentFilter] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [view, setView] = React.useState<OverviewView>("graph")
   const [refreshCounter, setRefreshCounter] = React.useState(0)
@@ -84,12 +85,13 @@ export default function ServersOverviewPage() {
     const search = query.trim().toLowerCase()
     return servers.filter((s) => {
       if (serverFilter !== "all" && String(s.id) !== serverFilter) return false
+      if (environmentFilter !== "all" && s.environment !== environmentFilter) return false
       if (!search) return true
       return `${s.domain} ${s.ipAddress} ${s.environment} ${s.provider}`
         .toLowerCase()
         .includes(search)
     })
-  }, [query, serverFilter, servers])
+  }, [environmentFilter, query, serverFilter, servers])
 
   const { nodes, edges } = React.useMemo(() => {
     const serverIds =
@@ -189,6 +191,24 @@ export default function ServersOverviewPage() {
                 {server.domain}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={environmentFilter}
+          onValueChange={(value) => setEnvironmentFilter(value ?? "all")}
+        >
+          <SelectTrigger className="w-full md:w-44">
+            <SelectValue placeholder="All environments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All environments</SelectItem>
+            {[...new Set(servers.map((server) => server.environment))]
+              .sort()
+              .map((environment) => (
+                <SelectItem key={environment} value={environment}>
+                  {environment}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>

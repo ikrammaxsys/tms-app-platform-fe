@@ -654,6 +654,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         title: "Alert and notification",
         description: "Send alert and notification to team when application is down or degraded.",
         tag: "Notification",
+      },
+      {
+        title: "Log Analyzer",
+        description: "Analyze logs across all applications and servers.",
+        tag: "Observability",
       }
     ],
     inProgress: [

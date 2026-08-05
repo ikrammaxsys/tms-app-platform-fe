@@ -8,6 +8,7 @@ import { ApplicationCards } from "@/components/platform/application-cards"
 import { PageHeader } from "@/components/platform/page-header"
 import { ApiUnavailable } from "@/components/platform/api-unavailable"
 import { OverviewRefreshButton } from "@/components/platform/overview-refresh-button"
+import { TimelineDaysFilter } from "@/components/platform/timeline-days-filter"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -18,6 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { tmsApi } from "@/lib/platform/api-service"
+import {
+  DEFAULT_SERVER_TIMELINE_DAYS,
+  type ServerTimelineDays,
+} from "@/lib/platform/queries"
 import { toApplicationView } from "@/lib/platform/view"
 import type { ApplicationView, UptimeTimeline } from "@/lib/platform/types"
 
@@ -34,6 +39,9 @@ export default function ApplicationOverviewPage() {
   const [query, setQuery] = React.useState("")
   const [serverFilter, setServerFilter] = React.useState("all")
   const [environmentFilter, setEnvironmentFilter] = React.useState("all")
+  const [periodDays, setPeriodDays] = React.useState<ServerTimelineDays>(
+    DEFAULT_SERVER_TIMELINE_DAYS,
+  )
   const [refreshCounter, setRefreshCounter] = React.useState(0)
 
   React.useEffect(() => {
@@ -58,7 +66,7 @@ export default function ApplicationOverviewPage() {
           applicationViews.map(async (app) => {
             try {
               const [overviewTimeline, liveTimeline] = await Promise.all([
-                tmsApi.getApplicationUptimeTimeline(app.id, 30),
+                tmsApi.getApplicationUptimeTimeline(app.id, periodDays),
                 tmsApi.getApplicationUptimeTimeline(app.id, 1),
               ])
               return [app.id, overviewTimeline, liveTimeline] as const
@@ -81,7 +89,7 @@ export default function ApplicationOverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [refreshCounter])
+  }, [periodDays, refreshCounter])
 
   const filteredApplications = React.useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -100,7 +108,7 @@ export default function ApplicationOverviewPage() {
       <div>
         <PageHeader
           title="Applications overview"
-          description="Live application health and 30-day uptime"
+          description={`Live application health and ${periodDays}-day uptime`}
           actions={
             <OverviewRefreshButton
               onRefresh={() => setRefreshCounter((count) => count + 1)}
@@ -117,7 +125,7 @@ export default function ApplicationOverviewPage() {
     <div>
       <PageHeader
         title="Applications overview"
-        description="Live application health and 30-day uptime"
+        description={`Live application health and ${periodDays}-day uptime`}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -183,6 +191,11 @@ export default function ApplicationOverviewPage() {
               ))}
           </SelectContent>
         </Select>
+        <TimelineDaysFilter
+          value={periodDays}
+          onChange={setPeriodDays}
+          disabled={loading}
+        />
       </div>
 
       <ApplicationCards
@@ -190,6 +203,7 @@ export default function ApplicationOverviewPage() {
         loading={loading}
         uptimeTimelines={uptimeTimelines}
         liveUptimeTimelines={liveUptimeTimelines}
+        periodDays={periodDays}
       />
     </div>
   )

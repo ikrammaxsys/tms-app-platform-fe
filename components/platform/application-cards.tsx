@@ -16,13 +16,15 @@ export function ApplicationCards({
   loading = false,
   uptimeTimelines,
   liveUptimeTimelines,
+  periodDays = 30,
 }: {
   applications: ApplicationView[]
   loading?: boolean
-  /** 30-day (or similar) timeline for availability strip and uptime percent. */
+  /** Timeline for availability strip and uptime percent over the selected period. */
   uptimeTimelines?: Record<number, UptimeTimeline | undefined>
   /** Recent hourly timeline for live status badge. */
   liveUptimeTimelines?: Record<number, UptimeTimeline | undefined>
+  periodDays?: number
 }) {
   if (loading) {
     return (
@@ -63,7 +65,7 @@ export function ApplicationCards({
         const overallTimeline = uptimeTimelines?.[app.id]
         const week = overallTimeline
           ? overallTimeline.points.map(availabilityDayFromUptimePoint)
-          : availabilityDays(app).slice(-30)
+          : availabilityDays(app).slice(-periodDays)
 
         const uptime = overallTimeline
           ? overallTimeline.totalChecks > 0
@@ -104,7 +106,9 @@ export function ApplicationCards({
             <CardContent className="space-y-3">
               <div className="space-y-2 rounded-lg border bg-muted/25 p-2.5">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">30-day uptime</span>
+                  <span className="text-muted-foreground">
+                    {periodDays}-day uptime
+                  </span>
                   <span className="font-semibold text-foreground">
                     {typeof uptime === "number" ? `${uptime}%` : uptime}
                   </span>

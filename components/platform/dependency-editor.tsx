@@ -54,8 +54,13 @@ import {
   filterApplicationsByServer,
   getServerFilterOptions,
 } from "@/lib/platform/dependency-server-filter"
-import type { Application, AppStatus } from "@/lib/platform/types"
-import { avatarColor, initialOf, normalizeAppStatus } from "@/lib/platform/view"
+import type { Application, AppStatus, UptimeTimeline } from "@/lib/platform/types"
+import {
+  applicationStatusFromLatestScan,
+  avatarColor,
+  initialOf,
+  type ApplicationLiveStatus,
+} from "@/lib/platform/view"
 import { cn } from "@/lib/utils"
 
 type DependencyImpactState = "none" | "down" | "impacted"
@@ -158,15 +163,22 @@ function expandEdgesForImpact(
   return expanded
 }
 
+function resolveEditorAppStatus(
+  applicationId: number,
+  uptimeTimelines: Record<number, UptimeTimeline | undefined>,
+): ApplicationLiveStatus {
+  return applicationStatusFromLatestScan(uptimeTimelines[applicationId])
+}
+
 function computeImpactStates(
   nodes: EditorFlowNode[],
   edges: Edge[],
-  appsById: Map<number, Application>,
+  uptimeTimelines: Record<number, UptimeTimeline | undefined>,
 ): Map<number, DependencyImpactState> {
   const appNodes = nodes.filter(isAppNode)
   const downIds = appNodes
     .map((node) => node.data.applicationId)
-    .filter((id) => normalizeAppStatus(appsById.get(id)?.status) === "Down")
+    .filter((id) => resolveEditorAppStatus(id, uptimeTimelines) === "Down")
 
   const impacted = getTransitiveDependents(downIds, expandEdgesForImpact(nodes, edges))
   const states = new Map<number, DependencyImpactState>()
@@ -441,13 +453,14 @@ const nodeTypes = {
 
 function appToNodeData(
   app: Application,
+  uptimeTimelines: Record<number, UptimeTimeline | undefined>,
   impactState: DependencyImpactState = "none",
 ): EditorNodeData {
   return {
     applicationId: app.id,
     name: app.name,
     version: app.version,
-    status: normalizeAppStatus(app.status),
+    status: resolveEditorAppStatus(app.id, uptimeTimelines),
     initial: initialOf(app.name),
     avatarColor: avatarColor(app.name),
     environment: String(app.serverEnvironment || "Live"),
@@ -458,6 +471,7 @@ function appToNodeData(
 function buildFlowFromSaved(
   saved: SavedDependencyEditorGraph,
   appsById: Map<number, Application>,
+  uptimeTimelines: Record<number, UptimeTimeline | undefined>,
 ): { nodes: EditorFlowNode[]; edges: Edge[]; viewport?: SavedDependencyEditorViewport } {
   const nodes: EditorFlowNode[] = []
   const edges: Edge[] = []
@@ -488,7 +502,7 @@ function buildFlowFromSaved(
       height: APPLICATION_NODE_HEIGHT,
       parentId: item.parentGroupId ?? undefined,
       extent: item.parentGroupId ? "parent" : undefined,
-      data: appToNodeData(app),
+      data: appToNodeData(app, uptimeTimelines),
     })
   }
 
@@ -602,12 +616,14 @@ function RestoreViewport({
 
 function DependencyEditorCanvas({
   applications,
+  uptimeTimelines,
   query,
   serverFilter,
   isFullscreen,
   onToggleFullscreen,
 }: {
   applications: Application[]
+  uptimeTimelines: Record<number, UptimeTimeline | undefined>
   query: string
   serverFilter: string
   isFullscreen: boolean
@@ -672,13 +688,13 @@ function DependencyEditorCanvas({
     if (hydrated || appsById.size === 0) return
     const saved = loadDependencyEditorGraph()
     if (saved) {
-      const flow = buildFlowFromSaved(saved, appsById)
+      const flow = buildFlowFromSaved(saved, appsById, uptimeTimelines)
       setNodes(flow.nodes)
       setEdges(flow.edges)
       setSavedViewport(flow.viewport)
     }
     setHydrated(true)
-  }, [appsById, hydrated, setNodes, setEdges])
+  }, [appsById, hydrated, setNodes, setEdges, uptimeTimelines])
 
   React.useEffect(() => {
     if (!hydrated) return
@@ -760,12 +776,12 @@ function DependencyEditorCanvas({
         height: APPLICATION_NODE_HEIGHT,
         parentId: targetGroup?.id,
         extent: targetGroup ? "parent" : undefined,
-        data: appToNodeData(app),
+        data: appToNodeData(app, uptimeTimelines),
       }
 
       setNodes((current) => sortNodesForFlow([...current, newNode]))
     },
-    [appsById, nodes, screenToFlowPosition, getIntersectingNodes, setNodes],
+    [appsById, nodes, screenToFlowPosition, getIntersectingNodes, setNodes, uptimeTimelines],
   )
 
   const onNodeDragStop = React.useCallback(
@@ -931,8 +947,8 @@ function DependencyEditorCanvas({
   )
 
   const impactStates = React.useMemo(
-    () => computeImpactStates(nodes, edges, appsById),
-    [nodes, edges, appsById],
+    () => computeImpactStates(nodes, edges, uptimeTimelines),
+    [nodes, edges, uptimeTimelines],
   )
 
   const displayNodes = React.useMemo(
@@ -952,17 +968,16 @@ function DependencyEditorCanvas({
           }
         }
 
-        const app = appsById.get(node.data.applicationId)
         return {
           ...node,
           data: {
             ...node.data,
-            status: app ? normalizeAppStatus(app.status) : node.data.status,
+            status: resolveEditorAppStatus(node.data.applicationId, uptimeTimelines),
             impactState: impactStates.get(node.data.applicationId) ?? "none",
           },
         }
       }),
-    [visibleNodes, nodes, appsById, impactStates],
+    [visibleNodes, nodes, uptimeTimelines, impactStates],
   )
 
   const displayEdges = React.useMemo(
@@ -1129,7 +1144,13 @@ function DependencyEditorCanvas({
   )
 }
 
-export function DependencyEditor({ applications }: { applications: Application[] }) {
+export function DependencyEditor({
+  applications,
+  uptimeTimelines,
+}: {
+  applications: Application[]
+  uptimeTimelines: Record<number, UptimeTimeline | undefined>
+}) {
   const [query, setQuery] = React.useState("")
   const [serverFilter, setServerFilter] = React.useState("all")
   const [isFullscreen, setIsFullscreen] = React.useState(false)
@@ -1246,6 +1267,7 @@ export function DependencyEditor({ applications }: { applications: Application[]
         <ReactFlowProvider>
           <DependencyEditorCanvas
             applications={applications}
+            uptimeTimelines={uptimeTimelines}
             query={query}
             serverFilter={serverFilter}
             isFullscreen={isFullscreen}
