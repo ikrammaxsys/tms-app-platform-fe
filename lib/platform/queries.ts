@@ -1,5 +1,5 @@
 import { ApiError } from "./api"
-import { tmsApi } from "./api-service"
+import { tmsApi, type ApplicationUptimeTimelineQuery } from "./api-service"
 import { formatBytes } from "./format"
 import {
   availabilityDays,
@@ -507,10 +507,10 @@ function fallbackTodayTimeline(
 
 export async function getApplicationUptimeTimeline(
   applicationId: number,
-  days = 30,
+  query: number | ApplicationUptimeTimelineQuery = 30,
 ): Promise<UptimeTimeline | undefined> {
   try {
-    return await tmsApi.getApplicationUptimeTimeline(applicationId, days)
+    return await tmsApi.getApplicationUptimeTimeline(applicationId, query)
   } catch {
     return undefined
   }
@@ -649,6 +649,11 @@ export async function getRoadmap(): Promise<RoadmapData> {
         title: "Reporting",
         description: "Generate reports for applications and servers.",
         tag: "Reporting",
+      },
+      {
+        title: "Alert and notification",
+        description: "Send alert and notification to team when application is down or degraded.",
+        tag: "Notification",
       }
     ],
     inProgress: [

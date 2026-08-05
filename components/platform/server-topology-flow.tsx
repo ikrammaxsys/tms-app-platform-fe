@@ -77,6 +77,7 @@ function ApplicationTopologyNode({ data }: NodeProps<Node<ApplicationTopologyNod
     <div
       className={cn(
         "bg-card rounded-xl border px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md",
+        data.status === "Operational" && "border-emerald-500/50",
         data.status === "Down" && "border-destructive/50",
         data.status === "Degraded" && "border-amber-500/50",
       )}
