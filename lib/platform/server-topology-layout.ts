@@ -65,6 +65,31 @@ function serverClusterOrigin(
   }
 }
 
+function topologyEdgeForApp(app: Application): Pick<Edge, "animated" | "style"> {
+  switch (app.status) {
+    case "Down":
+      return {
+        animated: true,
+        style: { stroke: "var(--destructive)", strokeWidth: 2 },
+      }
+    case "Degraded":
+      return {
+        animated: true,
+        style: { stroke: "#f59e0b", strokeWidth: 2 },
+      }
+    case "Operational":
+      return {
+        animated: true,
+        style: { stroke: "#10b981", strokeWidth: 2 },
+      }
+    default:
+      return {
+        animated: false,
+        style: { stroke: "var(--border)", strokeWidth: 2 },
+      }
+  }
+}
+
 function appsForServer(applications: Application[], serverId: number): Application[] {
   return applications
     .filter((a) => a.serverId === serverId)
@@ -175,6 +200,7 @@ export function buildServerTopology(
           stroke: connectionStyle.stroke,
           strokeWidth: connectionStyle.strokeWidth,
         },
+        ...topologyEdgeForApp(app),
       })
     })
   })

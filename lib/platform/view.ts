@@ -130,6 +130,33 @@ export function dayStatusFromUptimePercent(uptime?: number | null): DayStatus {
   return "Healthy"
 }
 
+const UPTIME_STATUS_BG_COLORS: Record<DayStatus, string> = {
+  Healthy: "#10b981",
+  Partial: "#f59e0b",
+  Down: "#ef4444",
+  NoData: "#cbd5e1",
+}
+
+export function uptimePercentBgColor(uptime?: number | null): string {
+  return UPTIME_STATUS_BG_COLORS[dayStatusFromUptimePercent(uptime)]
+}
+
+export function uptimePercentTextClass(uptime?: number | null): string {
+  const status = dayStatusFromUptimePercent(uptime)
+  if (status === "Healthy") return "text-emerald-600 dark:text-emerald-400"
+  if (status === "Partial") return "text-amber-600 dark:text-amber-400"
+  if (status === "Down") return "text-red-600 dark:text-red-400"
+  return "text-muted-foreground"
+}
+
+/** Inline CSS for spreadsheet export cells (Excel-compatible HTML). */
+export function uptimePercentCellStyle(uptime?: number | null): string {
+  const status = dayStatusFromUptimePercent(uptime)
+  const bg = UPTIME_STATUS_BG_COLORS[status]
+  const color = status === "NoData" ? "#475569" : "#ffffff"
+  return `background-color:${bg};color:${color};text-align:center;font-weight:600`
+}
+
 export function availabilityDayFromUptimePoint(point: UptimeTimelinePoint): AvailabilityDay {
   const status =
     point.totalChecks === 0 || point.status === "NoData"

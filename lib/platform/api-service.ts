@@ -27,6 +27,12 @@ import type {
   UptimeTimeline,
 } from "./types"
 
+export type ApplicationUptimeTimelineQuery = {
+  days?: number
+  startDate?: string
+  endDate?: string
+}
+
 export const tmsApi = {
   /* ---------------------------- Application Groups ---------------------------- */
 
@@ -78,8 +84,21 @@ export const tmsApi = {
 
   getApplication: (id: number) => apiFetch<Application>(`/api/applications/${id}`),
 
-  getApplicationUptimeTimeline: (applicationId: number, days = 30) =>
-    apiFetch<UptimeTimeline>(`/api/uptime/${applicationId}/timeline?days=${days}`),
+  getApplicationUptimeTimeline: (
+    applicationId: number,
+    query: number | ApplicationUptimeTimelineQuery = 30,
+  ) => {
+    const params = new URLSearchParams()
+    const normalized =
+      typeof query === "number" ? { days: query } satisfies ApplicationUptimeTimelineQuery : query
+    if (normalized.days != null) params.set("days", String(normalized.days))
+    if (normalized.startDate) params.set("startDate", normalized.startDate)
+    if (normalized.endDate) params.set("endDate", normalized.endDate)
+    const qs = params.toString()
+    return apiFetch<UptimeTimeline>(
+      `/api/uptime/${applicationId}/timeline${qs ? `?${qs}` : ""}`,
+    )
+  },
 
   getServerHostTimeline: (serverId: number, days = 7) =>
     apiFetch<HostMetricsTimeline>(`/api/uptime/${serverId}/host-timeline?days=${days}`),

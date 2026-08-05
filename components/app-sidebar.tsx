@@ -10,12 +10,13 @@ import {
   Map,
   Server,
   History,
-  Wrench,
   BarChart3,
   Network,
   Bot,
   Building2,
   GitBranch,
+  FileBarChart,
+  PieChart,
 } from "lucide-react"
 
 import {
@@ -35,6 +36,12 @@ const OPERATIONS_ITEMS = [
   { title: "Overview", href: "/", icon: LayoutDashboard },
   { title: "Applications Overview", href: "/applications/overview", icon: BarChart3 },
   { title: "Servers Overview", href: "/servers/overview", icon: Network },
+]
+
+const REPORTING_ITEMS = [
+  { title: "Reporting Overview", href: "/reporting", icon: FileBarChart },
+  { title: "Application Reports", href: "/reporting/applications", icon: PieChart },
+  { title: "Server Reports", href: "/reporting/servers", icon: Server },
 ]
 
 const MAINTENANCE_ITEMS = [
@@ -93,6 +100,26 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {OPERATIONS_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={isActive(pathname, item.href)}
+                    tooltip={item.title}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Reporting</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {REPORTING_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={isActive(pathname, item.href)}

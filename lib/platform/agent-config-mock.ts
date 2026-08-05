@@ -180,6 +180,36 @@ export function buildApplicationsFromRecords(
   return serverApplications.map(applicationToConfigApp)
 }
 
+/** Prefer applications from saved JSON; fall back to platform records when absent. */
+export function resolveApplicationsFromConfigJson(
+  jsonApplications: AgentConfigApplication[] | undefined,
+  serverApplications: Application[],
+): AgentConfigApplication[] {
+  if (Array.isArray(jsonApplications)) {
+    return jsonApplications.map((app) => normalizeApplication(app))
+  }
+  return buildApplicationsFromRecords(serverApplications)
+}
+
+export function findApplicationRecordForConfigApp(
+  configApp: AgentConfigApplication,
+  serverApplications: Application[],
+): Application | undefined {
+  return serverApplications.find(
+    (app) => (app.uid ?? `app-${app.id}`) === configApp.appId,
+  )
+}
+
+export function configAppDriftedFromRecord(
+  configApp: AgentConfigApplication,
+  record: Application,
+): boolean {
+  return (
+    normalizeConfigForCompare(configApp) !==
+    normalizeConfigForCompare(applicationToConfigApp(record))
+  )
+}
+
 function resolveHostIp(serverApplications: Application[]): string {
   return serverApplications.find((app) => app.serverIpAddress)?.serverIpAddress ?? ""
 }
@@ -280,7 +310,7 @@ export function parseAgentConfig(
           },
         },
       },
-      applications: serverApps,
+      applications: resolveApplicationsFromConfigJson(parsed.applications, serverApplications),
       logScanning: {
         ...defaults.logScanning,
         ...parsed.logScanning,

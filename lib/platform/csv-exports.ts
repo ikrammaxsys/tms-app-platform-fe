@@ -9,7 +9,8 @@ import type {
   UptimeTimeline,
 } from "./types"
 import type { CsvColumn } from "./export-csv"
-import { organizationCodeById, resolveApplicationLiveStatus } from "./view"
+import { collectDailyUptimeColumns, type ApplicationReportRow, type ServerReportRow } from "./reporting"
+import { organizationCodeById, resolveApplicationLiveStatus, uptimePercentCellStyle } from "./view"
 
 export const organizationCsvColumns: CsvColumn<Organization>[] = [
   { header: "ID", value: (row) => row.id },
@@ -85,6 +86,103 @@ export const agentCsvColumns: CsvColumn<Agent>[] = [
   {
     header: "Created At",
     value: (row) => (row.createdAt ? formatDateTime(row.createdAt) : ""),
+  },
+]
+
+const APPLICATION_REPORT_BASE_COLUMNS: CsvColumn<ApplicationReportRow>[] = [
+  { header: "ID", value: (row) => row.app.id },
+  { header: "Name", value: (row) => row.app.name },
+  { header: "UID", value: (row) => row.app.uid ?? "" },
+  { header: "Status", value: (row) => row.liveStatus },
+  {
+    header: "Overall Uptime %",
+    value: (row) => (row.uptimePercent !== null ? row.uptimePercent.toFixed(2) : ""),
+    cellStyle: (row) => uptimePercentCellStyle(row.uptimePercent),
+  },
+  { header: "Total Checks", value: (row) => row.totalChecks },
+  { header: "Up Checks", value: (row) => row.upCount },
+  { header: "Degraded Checks", value: (row) => row.degradedCount },
+  { header: "Down Checks", value: (row) => row.downCount },
+  { header: "Group", value: (row) => row.app.applicationGroupName },
+  { header: "Version", value: (row) => row.app.version },
+  { header: "Commit", value: (row) => row.app.commit },
+  { header: "Version Drift", value: (row) => (row.hasVersionDrift ? "Yes" : "No") },
+  { header: "Server", value: (row) => row.app.serverDomain },
+  { header: "Server IP", value: (row) => row.app.serverIpAddress },
+  { header: "Environment", value: (row) => row.app.serverEnvironment },
+]
+
+const APPLICATION_REPORT_TRAILING_COLUMNS: CsvColumn<ApplicationReportRow>[] = [
+  {
+    header: "Last Checked",
+    value: (row) => (row.lastChecked ? formatDateTime(row.lastChecked) : ""),
+  },
+  {
+    header: "Last Deployment",
+    value: (row) => (row.app.lastDeployment ? formatDateTime(row.app.lastDeployment) : ""),
+  },
+  { header: "App URL", value: (row) => row.app.appUrl },
+]
+
+export function applicationReportCsvColumns(
+  rows: ApplicationReportRow[],
+): CsvColumn<ApplicationReportRow>[] {
+  const dayColumns: CsvColumn<ApplicationReportRow>[] = collectDailyUptimeColumns(rows).map(
+    (day) => ({
+      header: `${day.label}`,
+      value: (row) => {
+        const entry = row.dailyUptime.find((d) => d.date === day.date)
+        if (!entry || entry.uptimePercent === null) return ""
+        return entry.uptimePercent.toFixed(2)
+      },
+      cellStyle: (row) => {
+        const entry = row.dailyUptime.find((d) => d.date === day.date)
+        return uptimePercentCellStyle(entry?.uptimePercent ?? null)
+      },
+    }),
+  )
+
+  return [
+    ...APPLICATION_REPORT_BASE_COLUMNS,
+    ...dayColumns,
+    ...APPLICATION_REPORT_TRAILING_COLUMNS,
+  ]
+}
+
+export const serverReportCsvColumns: CsvColumn<ServerReportRow>[] = [
+  { header: "ID", value: (row) => row.server.id },
+  { header: "Domain", value: (row) => row.server.domain },
+  { header: "IP Address", value: (row) => row.server.ipAddress },
+  { header: "Status", value: (row) => row.status },
+  { header: "Organization", value: (row) => row.organizationName },
+  { header: "Environment", value: (row) => row.server.environment },
+  { header: "Provider", value: (row) => row.server.provider },
+  { header: "Scope", value: (row) => row.server.internalExternal },
+  { header: "Country", value: (row) => row.server.country },
+  { header: "CPU %", value: (row) => (row.cpuUsage !== null ? row.cpuUsage.toFixed(2) : "") },
+  {
+    header: "RAM %",
+    value: (row) => (row.ramUsagePercent !== null ? row.ramUsagePercent.toFixed(2) : ""),
+  },
+  {
+    header: "Disk %",
+    value: (row) => (row.diskUsagePercent !== null ? row.diskUsagePercent.toFixed(2) : ""),
+  },
+  {
+    header: "Uptime %",
+    value: (row) => (row.uptimePercent !== null ? row.uptimePercent.toFixed(2) : ""),
+  },
+  { header: "Total Checks", value: (row) => row.totalChecks },
+  { header: "Up Checks", value: (row) => row.upCount },
+  { header: "Degraded Checks", value: (row) => row.degradedCount },
+  { header: "Down Checks", value: (row) => row.downCount },
+  { header: "App Count", value: (row) => row.appCount },
+  { header: "Apps Operational", value: (row) => row.appsOperational },
+  { header: "Apps Degraded", value: (row) => row.appsDegraded },
+  { header: "Apps Down", value: (row) => row.appsDown },
+  {
+    header: "Last Checked",
+    value: (row) => (row.lastChecked ? formatDateTime(row.lastChecked) : ""),
   },
 ]
 

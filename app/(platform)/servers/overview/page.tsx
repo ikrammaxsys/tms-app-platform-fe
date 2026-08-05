@@ -22,7 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { buildServerTopology } from "@/lib/platform/server-topology-layout"
 import { tmsApi } from "@/lib/platform/api-service"
-import type { Application, Server } from "@/lib/platform/types"
+import type { Application, Server, UptimeTimeline } from "@/lib/platform/types"
+import { resolveApplicationLiveStatus } from "@/lib/platform/view"
 import { cn } from "@/lib/utils"
 
 type OverviewView = "graph" | "grid"
@@ -32,6 +33,9 @@ export default function ServersOverviewPage() {
   const [error, setError] = React.useState<unknown>(null)
   const [servers, setServers] = React.useState<Server[]>([])
   const [applications, setApplications] = React.useState<Application[]>([])
+  const [uptimeTimelines, setUptimeTimelines] = React.useState<
+    Record<number, UptimeTimeline | undefined>
+  >({})
   const [serverFilter, setServerFilter] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [view, setView] = React.useState<OverviewView>("graph")
@@ -49,7 +53,21 @@ export default function ServersOverviewPage() {
         ])
         if (cancelled) return
         setServers([...(serverList ?? [])].sort((a, b) => a.domain.localeCompare(b.domain)))
-        setApplications(appList ?? [])
+        const appListSorted = appList ?? []
+        setApplications(appListSorted)
+
+        const timelineEntries = await Promise.all(
+          appListSorted.map(async (app) => {
+            try {
+              const timeline = await tmsApi.getApplicationUptimeTimeline(app.id, 1)
+              return [app.id, timeline] as const
+            } catch {
+              return [app.id, undefined] as const
+            }
+          }),
+        )
+        if (cancelled) return
+        setUptimeTimelines(Object.fromEntries(timelineEntries))
       } catch (err) {
         if (!cancelled) setError(err)
       } finally {
@@ -95,8 +113,13 @@ export default function ServersOverviewPage() {
       apps = applications.filter((a) => filteredServers.some((s) => s.id === a.serverId))
     }
 
-    return buildServerTopology(visibleServers, apps, { serverIds })
-  }, [applications, filteredServers, query, serverFilter, servers])
+    const appsWithLiveStatus = apps.map((app) => ({
+      ...app,
+      status: resolveApplicationLiveStatus(app, uptimeTimelines[app.id]),
+    }))
+
+    return buildServerTopology(visibleServers, appsWithLiveStatus, { serverIds })
+  }, [applications, filteredServers, query, serverFilter, servers, uptimeTimelines])
 
   const totalAppsOnView = nodes.filter((n) => n.data.kind === "application").length
 

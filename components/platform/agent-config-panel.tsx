@@ -30,6 +30,8 @@ import { ConfigJsonPreview } from "@/components/platform/agent-config-json-previ
 import {
   agentConfigDrifted,
   buildTemplateAgentConfig,
+  configAppDriftedFromRecord,
+  findApplicationRecordForConfigApp,
   formatConfigJson,
   parseAgentConfig,
   serializeAgentConfig,
@@ -131,10 +133,12 @@ export function AgentConfigPanel({ agent }: { agent: Agent }) {
     [agent, serverApplications],
   )
 
-  const configDrifted = React.useMemo(
-    () => agentConfigDrifted(savedConfigJson, templateConfig),
-    [savedConfigJson, templateConfig],
-  )
+  const configDrifted = React.useMemo(() => {
+    const jsonToCompare = dirty && config
+      ? serializeAgentConfig(config)
+      : savedConfigJson
+    return agentConfigDrifted(jsonToCompare, templateConfig)
+  }, [savedConfigJson, templateConfig, dirty, config])
 
   React.useEffect(() => {
     let cancelled = false
@@ -322,8 +326,9 @@ export function AgentConfigPanel({ agent }: { agent: Agent }) {
             }
           />
           <TooltipContent className="max-w-xs">
-            Saved config JSON differs from the generated template. This usually means
-            values were edited manually or platform data changed after the last save.
+            Config differs from the generated template — for example manual JSON edits or
+            platform application settings changed after the last save. Save to keep manual
+            overrides; use Regenerate to sync back to platform defaults.
           </TooltipContent>
         </Tooltip>
       )
@@ -432,8 +437,9 @@ export function AgentConfigPanel({ agent }: { agent: Agent }) {
                     <SyncStatusBadge />
                   </div>
                   <CardDescription>
-                    Loaded from application records on {agent.serverDomain}. Edit
-                    monitoring in each application&apos;s Configuration tab.
+                    Application entries come from saved config JSON when present. Edit via
+                    JSON for manual overrides (flagged as drifted), or update each
+                    application&apos;s Configuration tab and Regenerate to sync.
                   </CardDescription>
                 </div>
                 <Button
@@ -454,16 +460,30 @@ export function AgentConfigPanel({ agent }: { agent: Agent }) {
                   No applications found on this agent&apos;s server.
                 </p>
               ) : (
-                config.applications.map((app, index) => (
+                config.applications.map((app, index) => {
+                  const record = findApplicationRecordForConfigApp(app, serverApplications)
+                  const appDrifted = record ? configAppDriftedFromRecord(app, record) : false
+                  return (
                   <div key={app.appId || index} className="space-y-3 rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium">{app.name || "Unnamed application"}</p>
                         <p className="text-muted-foreground font-mono text-xs">{app.appId}</p>
                       </div>
-                      <Badge variant={app.enabled ? "default" : "secondary"}>
-                        {app.enabled ? "Monitoring on" : "Monitoring off"}
-                      </Badge>
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        {appDrifted ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-amber-500/50 bg-amber-500/15 text-amber-900 dark:border-amber-400/40 dark:bg-amber-400/15 dark:text-amber-100"
+                          >
+                            <TriangleAlert data-icon="inline-start" />
+                            Drifted
+                          </Badge>
+                        ) : null}
+                        <Badge variant={app.enabled ? "default" : "secondary"}>
+                          {app.enabled ? "Monitoring on" : "Monitoring off"}
+                        </Badge>
+                      </div>
                     </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor={`app-url-${app.appId}`}>Healthcheck URL</Label>
@@ -486,7 +506,8 @@ export function AgentConfigPanel({ agent }: { agent: Agent }) {
                       />
                     </div>
                   </div>
-                ))
+                  )
+                })
               )}
             </CardContent>
           </Card>
@@ -554,7 +575,7 @@ export function AgentConfigPanel({ agent }: { agent: Agent }) {
             ) : (
               <ConfigJsonPreview
                 json={jsonPreview}
-                highlightDrift={configDrifted && !dirty}
+                highlightDrift={configDrifted}
                 template={templateConfig}
               />
             )}
